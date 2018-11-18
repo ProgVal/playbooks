@@ -1,0 +1,33 @@
+[global]
+fsid = ee102060-0e06-4a46-8d99-a6e1f2ff3a5a
+mon initial members = ceph-mon-helium,carbon2,ganymede
+mon host = {% for mon in groups['mons'] %}{{ hostvars[mon].fe_addr }},{% endfor %}
+
+ms bind ipv6 = true
+osd pool default size = 3
+osd pool default min size = 2
+osd pool default pg num = 16
+osd pool default pgp num = 16
+
+[mds.helium]
+host = ceph-mon.helium
+
+#[client.radosgw.ganymede]
+#host = ganymede
+#rgw dns name = radosgw.ganymede
+#keyring = /etc/ceph/ceph.client.radosgw.keyring
+#rgw_frontends = "civetweb port=[::]:7480"
+#rgw socket path = /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock
+#rgw cache lru size = 1000
+#rgw_dynamic_resharding = false
+
+[client.radosgw.helium]
+host = helium
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw dns name = radosgw.helium
+rgw_frontends = "civetweb port=[::]:7480"
+rgw socket path = /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock
+rgw cache lru size = 1000
+rgw_dynamic_resharding = true
+rgw_reshard_bucket_lock_duration = 30
+

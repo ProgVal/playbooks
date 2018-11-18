@@ -1,0 +1,15 @@
+root-builder-bootstrap.helium ansible_user=root
+
+[all:vars]
+fsid=ee102060-0e06-4a46-8d99-a6e1f2ff3a5a
+debian_version=stretch
+
+[mons]
+ceph-mon.helium ansible_user=root
+ganymede
+carbon ansible_port=12322
+
+[friendship_express]
+ceph-mon.helium fe_addr=fdfe:d846:822e:a152:9aac:d1c:18d:dfba
+ganymede fe_addr=fdfe:c609:8b39:7629:77ef:dd4d:83a:4a56
+carbon fe_addr=fdfe:cb1:68e9:fcf3:8ed2:be0c:a78a:cfc4

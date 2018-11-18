@@ -1,0 +1,8 @@
+- name: "Build hosts file"
+  lineinfile:
+      dest: /etc/hosts
+      regexp: '.* {{ item }}$'
+      line: "{{ hostvars[item].fe_addr }} {{item}}"
+      state: present
+  when: hostvars[item].fe_addr is defined
+  with_items: "{{ groups['friendship_express'] }}"
