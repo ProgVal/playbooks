@@ -1,2 +1,16 @@
 dependencies:
   - role: ceph-client
+    ceph_client_caps: >-
+        mon 'profile rbd'
+        osd '
+            {% if ceph_rbd_rw_pools is defined %}
+                {% for pool in ceph_rbd_rw_pools %}
+                    {% if not loop.first %},{% endif %}
+                    profile rbd pool={{pool}} {% endfor %}
+            {% endif %}
+            {% if ceph_rbd_rw_pools is defined and ceph_rbd_ro_pools is defined %},{% endif %}
+            {% if ceph_rbd_ro_pools is defined %}
+                {% if not loop.first %},{% endif %}
+                {% for pool in ceph_rbd_ro_pools %} profile rbd-read-only pool={{pool}} {% endfor %}
+            {% endif %}
+            '

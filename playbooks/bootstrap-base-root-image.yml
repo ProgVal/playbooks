@@ -1,0 +1,25 @@
+- hosts: ceph-mon.helium
+  tasks:
+  - action: ceph_facts
+  - name: create root image pool
+    command: ceph osd pool create rbd-root-images 16 replicated replicated_hosts_hdd
+    when: '{{ "rbd-root-images" not in rbd_images }}'
+- hosts: root-builder-bootstrap.helium
+  pre_tasks:
+#  - apt:
+#      name: aptitude
+#      state: present
+#  - apt:
+#      upgrade: yes
+  roles:
+#  - friendship-express
+  - role: ceph-rbd
+    ceph_client_name: root-builder-bootstrap
+    ceph_rbd_rw_pools:
+    - rbd-root-images
+  tasks:
+  - action: ceph_facts
+    delegate_to: ceph-mon.helium
+  - name: create base root image block
+    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 102400 rbd-root-images/base-debian-stretch
+    when: '{{ "base-debian-stretch" not in rbd_images["rbd-root-images"] }}'

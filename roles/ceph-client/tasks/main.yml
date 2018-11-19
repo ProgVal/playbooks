@@ -1,9 +1,13 @@
 - name: create auth token
-  command: ceph auth get-or-create client.{{client_name}}
+  command: ceph auth get-or-create client.{{ceph_client_name}}
   delegate_to: "{{groups['mons'][0]}}"
   register: ceph_client_keyring
+- name: give capabilities
+  command: ceph auth caps client.{{ceph_client_name}} {{ceph_client_caps}}
+  delegate_to: "{{groups['mons'][0]}}"
+  when: ceph_client_caps is defined
 - name: write auth keyring
   copy:
-    dest: /etc/ceph/ceph.client.{{client_name}}.keyring
-    content: "{{ceph_client_keyring['stdout']}}"
+    dest: /etc/ceph/ceph.client.{{ceph_client_name}}.keyring
+    content: "{{ceph_client_keyring['stdout']}}\n"
 

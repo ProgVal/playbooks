@@ -1,0 +1,5 @@
+- name: install rbd-fuse
+  apt:
+    package: rbd-fuse
+    state: present
+
