@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # (c) 2013, Jimmy Tang <jcftang@gmail.com>
+# (c) 2018, Valentin Lorentz <progval+git@progval.net>
 #
 # This file is part of Ansible
 #
@@ -126,6 +127,25 @@ def run_ceph_facts(module):
     if rados_df:
         for (k,v) in rados_df_ds.items():
             setup_options["rados_df_%s" % k] = v
+
+    setup_options['rbd_images'] = {}
+    for pool in setup_options['osd_status_pools']:
+        if 'rbd' in pool['application_metadata']:
+            pool_name = pool['pool_name']
+            setup_options['rbd_images'][pool_name] = {}
+            cmd = ["/usr/bin/env", "rbd", "list", pool_name, "--format=json"]
+            rc, out, err = module.run_command(cmd, check_rc=True)
+            try:
+                images = json.loads(out)
+            except json.JsonDecodeError:
+                continue
+            for image in images:
+                cmd = ["/usr/bin/env", "rbd", "status", pool_name+'/'+image, "--format=json"]
+                rc, out, err = module.run_command(cmd, check_rc=True)
+                try:
+                    setup_options['rbd_images'][pool_name][image] = json.loads(out)
+                except json.JsonDecodeError:
+                    continue
 
     # business as usual
     for (k, v) in facts.items():                                                
