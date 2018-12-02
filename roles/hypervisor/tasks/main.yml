@@ -1,0 +1,53 @@
+- name: get-auth-key
+  command: 'ceph auth get-key client.{{ansible_hostname}}-libvirt'
+  delegate_to: "{{groups['mons'][0]}}"
+  register: ceph_key
+- name: install libvirt-daemon-system
+  apt:
+    name: libvirt-daemon-system
+    state: present
+- name: install qemu rbd support
+  apt:
+    name: qemu-block-extra
+    state: present
+- name: install python-libvirt
+  apt:
+    name: python-libvirt
+    state: present
+
+- name: Define secret
+  virt_secret:
+    secret: '{{ceph_key.stdout}}'
+    usage: ceph
+    usage_element: 'secret key for client.{{ansible_hostname}}-libvirt'
+    private: no
+    ephemeral: no
+    state: present
+  register: define_secret
+- set_fact:
+    rbd_auth_secret_uuid: '{{define_secret.uuid}}'
+#- name: define secret
+#  command: virsh secret-define --file /dev/stdin
+#  args:
+#    stdin: '{{ lookup("template", "libvirt-pool-secret.xml") }}'
+#  register: define_secret
+#- set_fact:
+#    rbd_auth_secret_uuid: "{{ define_secret.stdout.split(' ')[1] }}"
+#- name: set secret
+#  command: virsh secret-set-value --secret {{rbd_auth_secret_uuid}} --base64 {{ceph_key.stdout}}
+
+
+
+#- name: define storage pool
+#  virt_pool:
+#      command: define
+#      name: root-images
+#      xml: '{{ lookup("template", "libvirt-pool.xml") }}'
+#- name: enable storage pool
+#  virt_pool:
+#    state: active
+#    name: root-images
+- name: enable network
+  virt_net:
+    state: active
+    name: default

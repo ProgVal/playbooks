@@ -1,0 +1,12 @@
+<pool type="rbd">
+  <name>root-images</name>
+  <source>
+    <name>rbd-root-images</name>
+    {% for mon in groups['mons'] %}
+    <host name='{{ hostvars[mon].fe_addr }}' />
+    {% endfor %}
+    <auth username='{{ansible_hostname}}-libvirt' type='ceph'>
+      <secret uuid='{{rbd_auth_secret_uuid}}' />
+    </auth>
+  </source>
+</pool>

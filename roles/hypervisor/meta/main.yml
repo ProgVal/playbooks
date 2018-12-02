@@ -1,0 +1,6 @@
+dependencies:
+- role: ceph-rbd
+  ceph_client_name: "{{ansible_hostname}}-libvirt"
+  ceph_rbd_ro_pools:
+  - rbd-root-images
+

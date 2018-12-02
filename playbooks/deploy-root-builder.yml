@@ -1,0 +1,29 @@
+- hosts: carbon
+  roles:
+  - hypervisor
+
+  tasks:
+  - name: stop root-builder
+    virt:
+        name: root-builder
+        state: destroyed # ie. stopped
+    failed_when: False
+  - name: undefine root-builder # to force-apply any new version of the XML
+    virt:
+        name: root-builder
+        command: undefine
+    failed_when: False
+  - name: define root-builder
+    virt:
+        name: root-builder
+        command: define
+        xml: '{{ lookup("template", "libvirt-vm.xml") }}'
+    vars:
+        vm_hostname: root-builder
+        mem_max_mib: 2048
+        mem_cur_mib: 1024
+        nb_vcpu: 2
+  - name: start root-builder
+    virt:
+        name: root-builder
+        state: running

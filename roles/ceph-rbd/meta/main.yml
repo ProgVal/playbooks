@@ -10,7 +10,8 @@ dependencies:
             {% endif %}
             {% if ceph_rbd_rw_pools is defined and ceph_rbd_ro_pools is defined %},{% endif %}
             {% if ceph_rbd_ro_pools is defined %}
-                {% if not loop.first %},{% endif %}
-                {% for pool in ceph_rbd_ro_pools %} profile rbd-read-only pool={{pool}} {% endfor %}
+                {% for pool in ceph_rbd_ro_pools %}
+                    {% if not loop.first %},{% endif %}
+                    profile rbd-read-only pool={{pool}} {% endfor %}
             {% endif %}
             '
