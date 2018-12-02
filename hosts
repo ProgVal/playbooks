@@ -13,3 +13,4 @@ carbon ansible_port=12322
 ceph-mon.helium fe_addr=fdfe:d846:822e:a152:9aac:d1c:18d:dfba
 ganymede fe_addr=fdfe:c609:8b39:7629:77ef:dd4d:83a:4a56
 carbon fe_addr=fdfe:cb1:68e9:fcf3:8ed2:be0c:a78a:cfc4
+root-builder

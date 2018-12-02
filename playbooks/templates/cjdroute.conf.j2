@@ -1,0 +1,78 @@
+{
+    "privateKey": "{{ fe_sk }}",
+    "publicKey": "{{ fe_pk }}",
+    "ipv6": "{{ fe_addr }}",
+
+    "authorizedPasswords": [
+    ],
+
+    "admin": {
+        "bind": "127.0.0.1:11234",
+        "password": "{{ cjdns_admin_password|default("NONE") }}"
+    },
+
+    "interfaces": {
+        // The interface which connects over UDP/IP based VPN tunnel.
+        "UDPInterface": [
+            {
+                "bind": "0.0.0.0:{{ cjdns_udp_port|default("9940") }}",
+                "connectTo": {
+                }
+            },
+            {
+                "bind": "[::]:{{ cjdns_udp_port|default("9940") }}",
+                "connectTo": {
+                }
+            }
+        ]
+,
+        "ETHInterface": [
+            {
+                "bind": "all",
+                "beacon": 2,
+                "connectTo": {
+                }
+            }
+        ]
+
+    },
+
+    "router":
+    {
+        "supernodes": [
+            //"6743gf5tw80ExampleExampleExampleExamplevlyb23zfnuzv0.k",
+        ]
+
+        "interface": {
+            "type": "TUNInterface"
+            // "tunfd" : "android"
+            "tunDevice": "tun-fe"
+        },
+
+        "ipTunnel": {
+            "allowedConnections": [
+            ],
+
+            "outgoingConnections": [
+            ]
+        }
+    },
+
+    "security": [
+        { "setuser": "nobody", "keepNetAdmin": 1 },
+        { "chroot": "/var/run/" },
+        { "nofiles": 0 },
+        { "noforks": 1 },
+        { "seccomp": 1 },
+        { "setupComplete": 1 }
+    ],
+
+    "logging": {
+        // Uncomment to have cjdns log to stdout rather than making logs available
+        // via the admin socket.
+        // "logTo":"stdout"
+    },
+    "noBackground":0
+
+    // "pipe":"/tmp"
+}
