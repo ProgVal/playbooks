@@ -1,4 +1,4 @@
-<domain type='kvm'>
+<domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
   <name>{{vm_hostname}}</name>
   <uuid>{{hostvars[vm_hostname].vm_uuid}}</uuid>
   <memory unit='MiB'>{{mem_max_mib}}</memory>
@@ -12,7 +12,7 @@
     <acpi/>
     <apic/>
   </features>
-  <cpu mode='host-model'>
+  <cpu mode='host-passthrough'>
   </cpu>
   <clock offset='utc'>
     <timer name='rtc' tickpolicy='catchup'/>
@@ -26,13 +26,30 @@
     <suspend-to-mem enabled='no'/>
     <suspend-to-disk enabled='no'/>
   </pm>
+  <qemu:commandline>
+    <qemu:arg value='-drive' />
+    <qemu:arg value='file=rbd:rbd-root-images/root-builder:id=admin,format=raw,id=drive1,if=virtio,readonly=on' />
+  </qemu:commandline>
+  <!--<qemu:commandline>
+    <qemu:arg value='-drive' />
+    <qemu:arg value='file=rbd:rbd-root-images/root-builder:id=admin,format=raw,id=drive1,if=none,readonly=on' />
+    <qemu:arg value='-device' />
+    <qemu:arg value='driver=ide-hd,drive=drive1,discard_granularity=512' />
+  </qemu:commandline>-->
   <devices>
     <emulator>/usr/bin/kvm</emulator>
-    <disk type='volume'>
-      <driver name="qemu" type="raw" />
-      <source pool='root-images' volume='{{vm_hostname}}'/>
-      <target dev='hda' bus='ide'/>
-    </disk>
+    <!--<disk type='network' device='disk'>
+      <driver name="qemu" type="raw" readonly="true" />
+      <source protocol='rbd' name='rbd-root-images/{{vm_hostname}}'>
+        {% for mon in groups['mons'] %}
+        <host name='{{ hostvars[mon].fe_addr }}' />
+        {% endfor %}
+        <auth username='{{ansible_hostname}}-libvirt' type='ceph'>
+          <secret uuid='{{rbd_auth_secret_uuid}}' />
+        </auth>
+      </source>
+      <target dev="hda" bus="ide"/>
+    </disk>-->
     <interface type='network'>
       <source network='default'/>
       <model type='virtio'/>

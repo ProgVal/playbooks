@@ -1,8 +1,10 @@
 - hosts: carbon
-  roles:
-  - hypervisor
+  #roles:
+  #- hypervisor
 
   tasks:
+  - set_fact:
+      rbd_auth_secret_uuid: e17f114e-e658-4995-a46b-e80b0fb58c57 # tmp
   - name: stop root-builder
     virt:
         name: root-builder

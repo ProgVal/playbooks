@@ -31,34 +31,34 @@
       shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-root-images/root-builder"
       register: map_nbd
 
-#    - name: install system
-#      include_role:
-#          name: debootstrap
-#      vars:
-#          release: stretch
-#          tgt_hostname: root-builder
-#          layout:
-#          - device: "{{map_nbd.stdout}}"
-#            partitions:
-#            - num: 1
-#              size: 1M
-#              type: ef02
-#            - num: 2
-#              size: 100M
-#              type: 8200
-#              fs: ext4
-#              mount: /boot
-#            - num: 3
-#              # no size
-#              type: 8200
-#              fs: ext4
-#              mount: /
-#          install_packages:
-#          - qemu-guest-agent
-#          network:
-#          - interface: eth0
-#            address: dhcp
-#          users: []
+    - name: install system
+      include_role:
+          name: debootstrap
+      vars:
+          release: stretch
+          tgt_hostname: root-builder
+          layout:
+          - device: "{{map_nbd.stdout}}"
+            partitions:
+            - num: 1
+              size: 1M
+              type: ef02
+            - num: 2
+              size: 100M
+              type: 8200
+              fs: ext4
+              mount: /boot
+            - num: 3
+              # no size
+              type: 8200
+              fs: ext4
+              mount: /
+          install_packages:
+          - qemu-guest-agent
+          network:
+          - interface: eth0
+            address: dhcp
+          users: []
 
     - tempfile:
         state: directory
@@ -73,6 +73,29 @@
             fstype: ext4
             name: "{{tempfile_mount_root.path}}"
             src: "{{map_nbd.stdout}}p3"
+      - name: remount boot image
+        mount:
+            state: mounted
+            fstype: ext4
+            name: "{{tempfile_mount_root.path}}/boot"
+            src: "{{map_nbd.stdout}}p2"
+
+      - name: bind mount pseudo filesystems
+        command: "mount --bind /{{ item }} {{tempfile_mount_root.path}}/{{ item }} warn=no"
+        with_items:
+        - proc
+        - sys
+        - dev
+        - dev/pts
+      - name: re-configure GRUB # to use UUID instead of /dev/nbd* as rootfs
+        command: chroot {{tempfile_mount_root.path}} update-grub
+      - name: umount pseudo filesystems
+        command: umount {{tempfile_mount_root.path}}/{{ item }}
+        with_items:
+        - dev/pts
+        - proc
+        - sys
+        - dev
 
       - name: create ssh config dir
         file:
@@ -117,6 +140,10 @@
         command: sync
 
       always:
+      - name: unmount boot image
+        mount:
+            state: absent
+            name: "{{tempfile_mount_root.path}}/boot"
       - name: unmount root image
         mount:
             state: absent
