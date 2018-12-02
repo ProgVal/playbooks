@@ -17,12 +17,16 @@
     ceph_client_name: root-builder-bootstrap
     ceph_rbd_rw_pools:
     - rbd-root-images
+    - rbd-usr-images
   tasks:
   - action: ceph_facts
     delegate_to: ceph-mon.helium
-  - name: create root image block
+  - name: create root image
     command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-root-images/root-builder
     when: '"root-builder" not in rbd_images["rbd-root-images"]'
+  - name: create usr image
+    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-usr-images/common-usr
+    when: '"common-usr" not in rbd_images["rbd-root-images"]'
 
   - name: nbd mount block
     block:
@@ -30,6 +34,13 @@
     - name: map nbd root image
       shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-root-images/root-builder"
       register: map_nbd
+    - set_fact:
+        root_nbd: '{{map_nbd.stdout}}'
+    - name: map nbd root image
+      shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-root-images/root-builder"
+      register: map_nbd
+    - set_fact:
+        usr_nbd: '{{map_nbd.stdout}}'
 
     - name: install system
       include_role:
@@ -38,7 +49,7 @@
           release: stretch
           tgt_hostname: root-builder
           layout:
-          - device: "{{map_nbd.stdout}}"
+          - device: "{{root_nbd}}"
             partitions:
             - num: 1
               size: 1M
@@ -53,6 +64,13 @@
               type: 8200
               fs: ext4
               mount: /
+          - device: "{{usr_nbd}}"
+            partitions:
+            - num: 1
+              # no size
+              type: 8200
+              fs: ext4
+              mount: /usr/
           install_packages:
           - qemu-guest-agent
           network:
@@ -68,17 +86,11 @@
       block:
 
       - name: remount root image
-        mount:
-            state: mounted
-            fstype: ext4
-            name: "{{tempfile_mount_root.path}}"
-            src: "{{map_nbd.stdout}}p3"
+        command: "mount {{root_nbd}}p3 {{tempfile_mount_root.path}}"
       - name: remount boot image
-        mount:
-            state: mounted
-            fstype: ext4
-            name: "{{tempfile_mount_root.path}}/boot"
-            src: "{{map_nbd.stdout}}p2"
+        command: "mount {{root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
+      - name: remount usr image
+        command: "mount {{usr_nbd}}p2 {{tempfile_mount_root.path}}/usr"
 
       - name: bind mount pseudo filesystems
         command: "mount --bind /{{ item }} {{tempfile_mount_root.path}}/{{ item }} warn=no"
@@ -141,13 +153,11 @@
 
       always:
       - name: unmount boot image
-        mount:
-            state: absent
-            name: "{{tempfile_mount_root.path}}/boot"
+        command: "umount {{tempfile_mount_root.path}}/boot"
+      - name: unmount usr image
+        command: "umount {{tempfile_mount_root.path}}/usr"
       - name: unmount root image
-        mount:
-            state: absent
-            name: "{{tempfile_mount_root.path}}"
+        command: "umount {{tempfile_mount_root.path}}"
 
     always:
     - name: unmap rbd device
