@@ -1,0 +1,7 @@
+[submodule "deps/ceph-ansible"]
+	path = deps/ceph-ansible
+	url = https://github.com/ceph/ceph-ansible.git
+	branch = stable-3.1
+[submodule "roles/debootstrap"]
+	path = roles/debootstrap
+	url = https://github.com/ProgVal/ansible-debootstrap.git

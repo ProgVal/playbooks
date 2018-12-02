@@ -2,4 +2,8 @@
   apt:
     package: rbd-fuse
     state: present
+- name: install rbd-nbd
+  apt:
+    package: rbd-nbd
+    state: present
 
