@@ -23,23 +23,6 @@
   - name: create base root image block
     command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 102400 rbd-root-images/base-debian-stretch
     when: '"base-debian-stretch" not in rbd_images["rbd-root-images"]'
-#  - name: map root image
-#    command: rbd map --id root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring rbd-root-images/base-debian-stretch
-#    register: rbd_map_result
-
-#  - name: map root image
-#    command: rbdmap map --id root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring rbd-root-images/base-debian-stretch
-#    register: rbd_map_result
-#  - name: unmount if needed
-#    command: umount /mnt/rbd-root-images
-#    failed_when: false
-#  - name: create mount point
-#    file:
-#        path: /mnt/rbd-root-images
-#        state: directory
-#
-#  - name: unmount if needed
-#    command: umount /mnt/base-debian-stretch
 
   - name: nbd mount block
     block:
@@ -47,9 +30,6 @@
     - name: map nbd root image
       shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-root-images/base-debian-stretch"
       register: map_nbd
-
-  #  - name: mount root image
-  #    command: mount {{map_nbd}} /mnt/base-debian-stretch
 
     - name: install system
       include_role:
@@ -98,19 +78,16 @@
         file:
             path: "{{tempfile_mount_root.path}}/root/.ssh/"
             state: directory
-
       - name: create authorized_keys
         file:
             path: "{{tempfile_mount_root.path}}/root/.ssh/autorized_keys"
             state: touch
-
       - name: add ansible ssh key
         lineinfile:
             dest: "{{tempfile_mount_root.path}}/root/.ssh/autorized_keys"
             regexp: ".* ansible@particle$"
             line: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE53tpEGjrcLPe+eAHsIjz0u1q51JFSW61kq5FPS67I8 ansible@particle"
             state: present
-
       - name: add admin ssh key
         lineinfile:
             dest: "{{tempfile_mount_root.path}}/root/.ssh/autorized_keys"
@@ -122,10 +99,8 @@
         copy:
             dest: "{{tempfile_mount_root.path}}/root/"
             src: ../files/cjdns_0.20_amd64.deb
-
       - name: install packages
         command: chroot {{tempfile_mount_root.path}} eatmydata -- apt-get install -q -y htop bash-completion locales debootstrap openssh-server python # python3 ruby php vim emacs debian-goodies iotop iftop nethogs tcpdump lsof
-
       - name: install cjdns
         command: chroot {{tempfile_mount_root.path}} eatmydata -- dpkg -i /root/cjdns_0.20_amd64.deb
 
@@ -142,28 +117,3 @@
     - name: unmap rbd device
       command: "rbd-nbd unmap {{map_nbd.stdout}}p3"
 
-#  - name: make boot partition
-#    parted:
-#        device: "{{map_nbd.stdout}}"
-#        part_end: 1GiB
-#        state: present
-#  - name: make root partition
-#    parted:
-#        device: "{{map_nbd.stdout}}"
-#        part_start: 1GiB
-#        state: present
-#  - name: format root image
-#    filesystem:
-#        device: "{{map_nbd.stdout}}"
-#        force: no
-#        fstype: ext4
-#  - name: mount root image
-#    mount:
-#        boot: no
-#        state: mounted
-#        fstype: ext4
-#        name: /mnt/base-debian-stretch
-#        src: "{{map_nbd.stdout}}"
-
-#  - name: mount rbd-fuse
-#    shell: "CEPH_ARGS=\" --id client.root-builder-bootstrap\" rbd-fuse -p rbd-root-images /mnt/rbd-root-images"
