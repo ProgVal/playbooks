@@ -17,16 +17,12 @@
     ceph_client_name: root-builder-bootstrap
     ceph_rbd_rw_pools:
     - rbd-root-images
-    - rbd-usr-images
   tasks:
   - action: ceph_facts
     delegate_to: ceph-mon.helium
   - name: create root image
     command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-root-images/root-builder
     when: '"root-builder" not in rbd_images["rbd-root-images"]'
-  - name: create usr image
-    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-usr-images/common-usr
-    when: '"common-usr" not in rbd_images["rbd-usr-images"]'
 
   - name: nbd mount block
     block:
@@ -36,11 +32,6 @@
       register: map_nbd
     - set_fact:
         root_nbd: '{{map_nbd.stdout}}'
-    - name: map nbd root image
-      shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-usr-images/common-usr"
-      register: map_nbd
-    - set_fact:
-        usr_nbd: '{{map_nbd.stdout}}'
 
     - name: install system
       include_role:
@@ -64,23 +55,12 @@
               type: 8200
               fs: ext4
               mount: /
-          - device: "{{usr_nbd}}"
-            partitions:
-            - num: 1
-              size: 1M
-              type: ef02
-            - num: 2
-              # no size
-              type: 8200
-              fs: ext4
-              mount: /usr/
           install_packages:
           - qemu-guest-agent
           network:
           - interface: eth0
             address: dhcp
           users: []
-          debootstrap_extra_args: "--merged-usr"
 
     - tempfile:
         state: directory
@@ -93,8 +73,6 @@
         command: "mount {{root_nbd}}p3 {{tempfile_mount_root.path}}"
       - name: remount boot image
         command: "mount {{root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
-      - name: remount usr image
-        command: "mount {{usr_nbd}}p2 {{tempfile_mount_root.path}}/usr"
 
       - name: bind mount pseudo filesystems
         command: "mount --bind /{{ item }} {{tempfile_mount_root.path}}/{{ item }} warn=no"
@@ -158,14 +136,10 @@
       always:
       - name: unmount boot image
         command: "umount {{tempfile_mount_root.path}}/boot"
-      - name: unmount usr image
-        command: "umount {{tempfile_mount_root.path}}/usr"
       - name: unmount root image
         command: "umount {{tempfile_mount_root.path}}"
 
     always:
     - name: unmap rbd device
       command: "rbd-nbd unmap {{root_nbd}}"
-    - name: unmap rbd device
-      command: "rbd-nbd unmap {{usr_nbd}}"
 

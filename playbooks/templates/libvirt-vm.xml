@@ -32,10 +32,12 @@
     <qemu:arg value='-device' />
     <qemu:arg value='driver=ide-hd,drive=drive1,discard_granularity=512' />
   </qemu:commandline>
+  <!--
   <qemu:commandline>
     <qemu:arg value='-drive' />
     <qemu:arg value='file=rbd:rbd-usr-images/common-usr:id=admin,format=raw,id=drive2,if=virtio,readonly=on' />
   </qemu:commandline>
+  -->
   <devices>
     <emulator>/usr/bin/kvm</emulator>
     <!--<disk type='network' device='disk'>
