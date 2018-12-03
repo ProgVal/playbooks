@@ -26,7 +26,7 @@
     when: '"root-builder" not in rbd_images["rbd-root-images"]'
   - name: create usr image
     command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-usr-images/common-usr
-    when: '"common-usr" not in rbd_images["rbd-root-images"]'
+    when: '"common-usr" not in rbd_images["rbd-usr-images"]'
 
   - name: nbd mount block
     block:
@@ -37,7 +37,7 @@
     - set_fact:
         root_nbd: '{{map_nbd.stdout}}'
     - name: map nbd root image
-      shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-root-images/root-builder"
+      shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-usr-images/common-usr"
       register: map_nbd
     - set_fact:
         usr_nbd: '{{map_nbd.stdout}}'
@@ -67,6 +67,9 @@
           - device: "{{usr_nbd}}"
             partitions:
             - num: 1
+              size: 1M
+              type: ef02
+            - num: 2
               # no size
               type: 8200
               fs: ext4
@@ -77,6 +80,7 @@
           - interface: eth0
             address: dhcp
           users: []
+          debootstrap_extra_args: "--merged-usr"
 
     - tempfile:
         state: directory
@@ -161,5 +165,7 @@
 
     always:
     - name: unmap rbd device
-      command: "rbd-nbd unmap {{map_nbd.stdout}}p3"
+      command: "rbd-nbd unmap {{root_nbd}}"
+    - name: unmap rbd device
+      command: "rbd-nbd unmap {{usr_nbd}}"
 
