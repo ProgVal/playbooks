@@ -20,18 +20,27 @@
   tasks:
   - action: ceph_facts
     delegate_to: ceph-mon.helium
-  - name: create root image
+  - name: create lower root image
+    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-root-images/lower-root-stretch
+    when: '"lower-root-stretch" not in rbd_images["rbd-root-images"]'
+  - name: create middle root image
     command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-root-images/root-builder
     when: '"root-builder" not in rbd_images["rbd-root-images"]'
 
   - name: nbd mount block
     block:
 
-    - name: map nbd root image
+    - name: map nbd lower root image
+      shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-root-images/lower-root-stretch"
+      register: map_nbd
+    - set_fact:
+        lower_root_nbd: '{{map_nbd.stdout}}'
+
+    - name: map nbd middle root image
       shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-root-images/root-builder"
       register: map_nbd
     - set_fact:
-        root_nbd: '{{map_nbd.stdout}}'
+        middle_root_nbd: '{{map_nbd.stdout}}'
 
     - name: install system
       include_role:
@@ -39,8 +48,9 @@
       vars:
           release: stretch
           tgt_hostname: root-builder
+          grub_timeout: 1
           layout:
-          - device: "{{root_nbd}}"
+          - device: "{{lower_root_nbd}}"
             partitions:
             - num: 1
               size: 1M
@@ -55,8 +65,18 @@
               type: 8200
               fs: ext4
               mount: /
-          install_packages:
-          - qemu-guest-agent
+          - device: "{{middle_root_nbd}}"
+            partitions:
+            - num: 1
+              size: 1M
+              type: ef02
+            - num: 2
+              # no size
+              type: 8200
+              fs: ext4
+              mount: /mnt/__middle_root
+#          install_packages:
+#          - qemu-guest-agent
           network:
           - interface: eth0
             address: dhcp
@@ -65,31 +85,14 @@
     - tempfile:
         state: directory
       register: tempfile_mount_root
-
-    - name: remount block
+#
+    - name: remount block (lower)
       block:
 
-      - name: remount root image
-        command: "mount {{root_nbd}}p3 {{tempfile_mount_root.path}}"
+      - name: remount lower root image
+        command: "mount {{lower_root_nbd}}p3 {{tempfile_mount_root.path}}"
       - name: remount boot image
-        command: "mount {{root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
-
-      - name: bind mount pseudo filesystems
-        command: "mount --bind /{{ item }} {{tempfile_mount_root.path}}/{{ item }} warn=no"
-        with_items:
-        - proc
-        - sys
-        - dev
-        - dev/pts
-      - name: re-configure GRUB # to use UUID instead of /dev/nbd* as rootfs
-        command: chroot {{tempfile_mount_root.path}} update-grub
-      - name: umount pseudo filesystems
-        command: umount {{tempfile_mount_root.path}}/{{ item }}
-        with_items:
-        - dev/pts
-        - proc
-        - sys
-        - dev
+        command: "mount {{lower_root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
 
       - name: create ssh config dir
         file:
@@ -117,9 +120,39 @@
             dest: "{{tempfile_mount_root.path}}/root/"
             src: cjdns_0.20_amd64.deb
       - name: install packages
-        command: chroot {{tempfile_mount_root.path}} eatmydata -- apt-get install -q -y htop bash-completion locales debootstrap openssh-server python # python3 ruby php vim emacs debian-goodies iotop iftop nethogs tcpdump lsof
+        command: chroot {{tempfile_mount_root.path}} eatmydata -- apt-get install -q -y python # htop bash-completion locales debootstrap openssh-server # python3 ruby php vim emacs debian-goodies iotop iftop nethogs tcpdump lsof
       - name: install cjdns
         command: chroot {{tempfile_mount_root.path}} eatmydata -- dpkg -i /root/cjdns_0.20_amd64.deb
+
+      always:
+      - name: fsync
+        command: sync
+      - name: unmount boot image
+        command: "umount {{tempfile_mount_root.path}}/boot"
+      - name: unmount root image
+        command: "umount {{tempfile_mount_root.path}}"
+
+    - name: load overlayfs
+      modprobe:
+          name: overlay
+          state: present
+
+    - name: remount block (lower+middle)
+      block:
+
+      - name: make dirs
+        command: "mkdir -p {{tempfile_mount_root.path}}/mnt/__upper_etc {{tempfile_mount_root.path}}/mnt/__upper_var"
+#      - name: remount lower root image
+#        command: "mount {{lower_root_nbd}}p3 {{tempfile_mount_root.path}}/mnt/__lower_root"
+#      - name: remount middle root image
+#        command: "mount {{middle_root_nbd}}p2 {{tempfile_mount_root.path}}/mnt/__middle_root"
+#      - name: overlay root
+#        command: "mount -t overlay overlay -o lowerdir={{tempfile_mount_root.path}}/__lower_root,upperdir={{tempfile_mount_root.path}}/__middle_root {{tempfile_mount_root.path}}/"
+      - name: remount lower root image
+        command: "mount {{lower_root_nbd}}p3 {{tempfile_mount_root.path}}"
+      - name: remount boot image
+        command: "mount {{lower_root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
+
       - name: configure cjdns
         template:
             src: cjdroute.conf.j2
@@ -130,16 +163,50 @@
             fe_pk: hostvars['root-builder'].fe_pk
             fe_addr: hostvars['root-builder'].fe_addr
 
-      - name: fsync
-        command: sync
+      - command: "lsblk -o uuid -nJ {{lower_root_nbd}}p2"
+        register: lsblk_boot
+      - command: "lsblk -o uuid -nJ {{lower_root_nbd}}p3"
+        register: lsblk_lower_root
+      - command: "lsblk -o uuid -nJ {{middle_root_nbd}}p2"
+        register: lsblk_middle_root
+      - set_fact:
+          lsblk_boot: "{{lsblk_boot.stdout|from_json}}"
+          lsblk_lower_root: "{{lsblk_lower_root.stdout|from_json}}"
+          lsblk_middle_root: "{{lsblk_middle_root.stdout|from_json}}"
+
+      - name: configure fstab
+        template:
+            src: fstab
+            dest: "{{tempfile_mount_root.path}}/etc/fstab"
+        vars:
+            boot_uuid: "{{lsblk_boot['blockdevices'][0]['uuid']}}"
+            lower_root_uuid: "{{lsblk_lower_root['blockdevices'][0]['uuid']}}"
+            middle_root_uuid: "{{lsblk_middle_root['blockdevices'][0]['uuid']}}"
+      - name: configure replacement init
+        template:
+            src: overlayInit.sh
+            dest: "{{tempfile_mount_root.path}}/sbin/overlayInit.sh"
+            mode: "u=rwx,g=rx,o=rx"
+      - name: reconfigure GRUB ot use the new init
+        replace:
+            regexp: "root="
+            replace: "init=/sbin/overlayInit.sh root="
+            path: "{{tempfile_mount_root.path}}/boot/grub/grub.cfg"
 
       always:
+      - name: fsync
+        command: sync
       - name: unmount boot image
         command: "umount {{tempfile_mount_root.path}}/boot"
-      - name: unmount root image
+      - name: unmount overlay root
         command: "umount {{tempfile_mount_root.path}}"
+#      - name: unmount middle root image
+#        command: "umount {{tempfile_mount_root.path}}/mnt/__lower_root"
+#      - name: unmount lower root image
+#        command: "umount {{tempfile_mount_root.path}}/mnt/__middle_root"
 
     always:
     - name: unmap rbd device
-      command: "rbd-nbd unmap {{root_nbd}}"
-
+      command: "rbd-nbd unmap {{lower_root_nbd}}"
+    - name: unmap rbd device
+      command: "rbd-nbd unmap {{middle_root_nbd}}"
