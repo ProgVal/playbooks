@@ -140,8 +140,6 @@
     - name: remount block (lower+middle)
       block:
 
-      - name: make dirs
-        command: "mkdir -p {{tempfile_mount_root.path}}/mnt/__upper_etc {{tempfile_mount_root.path}}/mnt/__upper_var"
 #      - name: remount lower root image
 #        command: "mount {{lower_root_nbd}}p3 {{tempfile_mount_root.path}}/mnt/__lower_root"
 #      - name: remount middle root image
@@ -152,6 +150,11 @@
         command: "mount {{lower_root_nbd}}p3 {{tempfile_mount_root.path}}"
       - name: remount boot image
         command: "mount {{lower_root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
+
+      - name: prepare etc overlay
+        file:
+            path: "{{tempfile_mount_root.path}}/mnt/__upper_etc/"
+            state: directory
 
       - name: configure cjdns
         template:
