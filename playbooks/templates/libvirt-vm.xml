@@ -26,15 +26,22 @@
     <suspend-to-mem enabled='no'/>
     <suspend-to-disk enabled='no'/>
   </pm>
+  <!-- base/common read-only root -->
   <qemu:commandline>
     <qemu:arg value='-drive' />
     <qemu:arg value='file=rbd:rbd-root-images/lower-root-stretch:id=admin,format=raw,id=drive1,if=virtio,readonly=on' />
   </qemu:commandline>
+  <!-- VM-specific read-only root -->
   <qemu:commandline>
     <qemu:arg value='-drive' />
-    <qemu:arg value='file=rbd:rbd-root-images/root-builder:id=admin,format=raw,id=drive2,if=none' />
+    <qemu:arg value='file=rbd:rbd-root-images/root-builder:id=admin,format=raw,id=drive2,if=virtio,readonly=on' />
+  </qemu:commandline>
+  <!-- VM-specific read-write for the system -->
+  <qemu:commandline>
+    <qemu:arg value='-drive' />
+    <qemu:arg value='file=rbd:rbd-system-rw/root-builder:id=admin,format=raw,id=drive3,if=none' />
     <qemu:arg value='-device' />
-    <qemu:arg value='driver=ide-hd,drive=drive2,discard_granularity=512' />
+    <qemu:arg value='driver=ide-hd,drive=drive3,discard_granularity=512' />
   </qemu:commandline>
   <devices>
     <emulator>/usr/bin/kvm</emulator>

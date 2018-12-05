@@ -1,11 +1,14 @@
 # <file system>           <mount point>       <type>    <options>              <dump>  <pass>
-UUID={{lower_root_uuid}}  /   ext4      noatime,nodiratime,ro  0       1
-#UUID={{lower_root_uuid}}   /mnt/__lower_root   ext4      noatime,nodiratime,ro  0       1
-#UUID={{middle_root_uuid}}  /mnt/__middle_root  ext4      noatime,nodiratime,ro  0       1
+#UUID={{lower_root_uuid}}  /   ext4      noatime,nodiratime,ro  0       1
+UUID={{lower_root_uuid}}   /mnt/__lower_root  ext4      noatime,nodiratime,ro  0       1
+UUID={{middle_root_uuid}}  /mnt/__middle_root ext4      noatime,nodiratime,ro  0       1
 #tmpfs                     /mnt/__upper_root   tmpfs     noatime,nodiratime     0       0
+overlay                    /                  overlay   noatime,nodiratime,lowerdir=/mnt/__lower_root:/mnt/__middle_root 0 0
 #overlay                   /                   overlay   noatime,nodiratime,lowerdir=/mnt/__lower_root:/mnt/__middle_root,upperdir=/mnt/__upper_root 0 0
 #tmpfs                     /mnt/__upper_etc    tmpfs     noatime,nodiratime     0       0
 #overlay                   /etc                overlay   noatime,nodiratime,lowerdir=/etc,upperdir=/mnt/__upper_etc 0 0
+UUID={{system_rw_uuid}}    /mnt/__system_rw   ext4      noatime,nodiratime     0       1
+overlay                    /var               overlay   noatime,nodiratime,lowerdir=/var,upperdir=/mnt/__system_rw/var/datadir,workdir=/mnt/__system_rw/var/workdir 0 0
 UUID={{boot_uuid}}        /boot               ext4      noatime,nodiratime,ro  0       2
 tmpfs                     /tmp                tmpfs     defaults               0       0
 

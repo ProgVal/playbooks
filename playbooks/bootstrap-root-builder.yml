@@ -17,6 +17,8 @@
     ceph_client_name: root-builder-bootstrap
     ceph_rbd_rw_pools:
     - rbd-root-images
+    - rbd-common-root-images
+    - rbd-system-rw
   tasks:
   - action: ceph_facts
     delegate_to: ceph-mon.helium
@@ -26,6 +28,9 @@
   - name: create middle root image
     command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-root-images/root-builder
     when: '"root-builder" not in rbd_images["rbd-root-images"]'
+  - name: create middle root image
+    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-system-rw/root-builder
+    when: '"root-builder" not in rbd_images["rbd-system-rw"]'
 
   - name: nbd mount block
     block:
@@ -41,6 +46,12 @@
       register: map_nbd
     - set_fact:
         middle_root_nbd: '{{map_nbd.stdout}}'
+
+    - name: map nbd default system rw image
+      shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map  rbd-system-rw/root-builder"
+      register: map_nbd
+    - set_fact:
+        system_rw_nbd: '{{map_nbd.stdout}}'
 
     - name: install system
       include_role:
@@ -75,7 +86,18 @@
               type: 8200
               fs: ext4
               mount: /mnt/__middle_root
-#          install_packages:
+          - device: "{{system_rw_nbd}}"
+            partitions:
+            - num: 1
+              size: 1M
+              type: ef02
+            - num: 2
+              # no size
+              type: 8200
+              fs: ext4
+              mount: /mnt/__upper_var
+          install_packages:
+          - less
 #          - qemu-guest-agent
           network:
           - interface: eth0
@@ -150,11 +172,21 @@
         command: "mount {{lower_root_nbd}}p3 {{tempfile_mount_root.path}}"
       - name: remount boot image
         command: "mount {{lower_root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
+      - name: remount var image
+        command: "mount {{system_rw_nbd}}p2 {{tempfile_mount_root.path}}/mnt/__system_rw"
 
       - name: prepare etc overlay
         file:
             path: "{{tempfile_mount_root.path}}/mnt/__upper_etc/"
             state: directory
+
+      - name: prepare var overlay
+        file:
+            path: "{{tempfile_mount_root.path}}/mnt/__system_rw/{{item}}"
+            state: directory
+        with_items:
+        - var/datadir
+        - var/workdir
 
       - name: configure cjdns
         template:
@@ -172,10 +204,13 @@
         register: lsblk_lower_root
       - command: "lsblk -o uuid -nJ {{middle_root_nbd}}p2"
         register: lsblk_middle_root
+      - command: "lsblk -o uuid -nJ {{system_rw_nbd}}p2"
+        register: lsblk_system_rw
       - set_fact:
           lsblk_boot: "{{lsblk_boot.stdout|from_json}}"
           lsblk_lower_root: "{{lsblk_lower_root.stdout|from_json}}"
           lsblk_middle_root: "{{lsblk_middle_root.stdout|from_json}}"
+          lsblk_system_rw: "{{lsblk_system_rw|from_json}}"
 
       - name: configure fstab
         template:
@@ -185,6 +220,8 @@
             boot_uuid: "{{lsblk_boot['blockdevices'][0]['uuid']}}"
             lower_root_uuid: "{{lsblk_lower_root['blockdevices'][0]['uuid']}}"
             middle_root_uuid: "{{lsblk_middle_root['blockdevices'][0]['uuid']}}"
+            system_rw_uuid: "{{lsblk_system_rw['blockdevices'][0]['uuid']}}"
+
       - name: configure replacement init
         template:
             src: overlayInit.sh
