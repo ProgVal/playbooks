@@ -59,6 +59,7 @@
       vars:
           release: stretch
           tgt_hostname: root-builder
+          root_password: "$6$EQArW9CAtSgpl$6daW4PpbizoPFi370vzhNdzhpYzPnB3ichEedGBQsei9D2iyzbC0pwFWX7OMSdbFdx/fWBAg.OyfMgFrBfn11/" # TODO: change it
           grub_timeout: 1
           layout:
           - device: "{{lower_root_nbd}}"
@@ -146,6 +147,13 @@
       - name: install cjdns
         command: chroot {{tempfile_mount_root.path}} eatmydata -- dpkg -i /root/cjdns_0.20_amd64.deb
 
+      - name: disable systemd-timesyncd
+        command: chroot {{tempfile_mount_root.path}} systemctl disable systemd-timesyncd
+        # Disabled for two two reasons:
+        # 1. it tries to write to /var/lib/systemd/clock (to ensure a monotonic clock
+        #    in case the hardware does not support it)
+        # 2. this is a VM, time is set by the host so it's useless
+
       always:
       - name: fsync
         command: sync
@@ -172,7 +180,13 @@
         command: "mount {{lower_root_nbd}}p3 {{tempfile_mount_root.path}}"
       - name: remount boot image
         command: "mount {{lower_root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
-      - name: remount var image
+
+      - name: make mount point for system read-write
+        file:
+            path: "{{tempfile_mount_root.path}}/mnt/__system_rw"
+            state: directory
+
+      - name: remount system rw image
         command: "mount {{system_rw_nbd}}p2 {{tempfile_mount_root.path}}/mnt/__system_rw"
 
       - name: prepare etc overlay
@@ -180,13 +194,13 @@
             path: "{{tempfile_mount_root.path}}/mnt/__upper_etc/"
             state: directory
 
-      - name: prepare var overlay
+      - name: prepare var-log overlay
         file:
             path: "{{tempfile_mount_root.path}}/mnt/__system_rw/{{item}}"
             state: directory
         with_items:
-        - var/datadir
-        - var/workdir
+        - var-log/datadir
+        - var-log/workdir
 
       - name: configure cjdns
         template:
@@ -210,7 +224,7 @@
           lsblk_boot: "{{lsblk_boot.stdout|from_json}}"
           lsblk_lower_root: "{{lsblk_lower_root.stdout|from_json}}"
           lsblk_middle_root: "{{lsblk_middle_root.stdout|from_json}}"
-          lsblk_system_rw: "{{lsblk_system_rw|from_json}}"
+          lsblk_system_rw: "{{lsblk_system_rw.stdout|from_json}}"
 
       - name: configure fstab
         template:
@@ -236,6 +250,9 @@
       always:
       - name: fsync
         command: sync
+
+      - name: unmount system rw image
+        command: "umount {{tempfile_mount_root.path}}/mnt/__system_rw"
       - name: unmount boot image
         command: "umount {{tempfile_mount_root.path}}/boot"
       - name: unmount overlay root
