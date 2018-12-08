@@ -1,5 +1,6 @@
 # <file system>           <mount point>       <type>    <options>              <dump>  <pass>
 UUID={{root_uuid}}        /                   ext4      noatime,nodiratime,ro  0       1
+#/dev/mapper/{{root_crypt_target}} /                   ext4      noatime,nodiratime,ro  0       1
 #overlay                   /                   overlay   noatime,nodiratime,lowerdir=/mnt/__lower_root:/mnt/__middle_root,upperdir=/mnt/__upper_root 0 0
 #tmpfs                     /mnt/__upper_etc    tmpfs     noatime,nodiratime     0       0
 #overlay                   /etc                overlay   noatime,nodiratime,lowerdir=/etc,upperdir=/mnt/__upper_etc 0 0
