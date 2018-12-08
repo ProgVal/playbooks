@@ -26,11 +26,6 @@
     <suspend-to-mem enabled='no'/>
     <suspend-to-disk enabled='no'/>
   </pm>
-  <!-- base/common read-only root -->
-  <qemu:commandline>
-    <qemu:arg value='-drive' />
-    <qemu:arg value='file=rbd:rbd-root-images/lower-root-stretch:id=admin,format=raw,id=drive1,if=virtio,readonly=on' />
-  </qemu:commandline>
   <!-- VM-specific read-only root -->
   <qemu:commandline>
     <qemu:arg value='-drive' />

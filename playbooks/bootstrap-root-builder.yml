@@ -22,9 +22,6 @@
   tasks:
   - action: ceph_facts
     delegate_to: ceph-mon.helium
-  - name: create lower root image
-    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-root-images/lower-root-stretch
-    when: '"lower-root-stretch" not in rbd_images["rbd-root-images"]'
   - name: create middle root image
     command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-root-images/root-builder
     when: '"root-builder" not in rbd_images["rbd-root-images"]'
@@ -35,17 +32,11 @@
   - name: nbd mount block
     block:
 
-    - name: map nbd lower root image
-      shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-root-images/lower-root-stretch"
-      register: map_nbd
-    - set_fact:
-        lower_root_nbd: '{{map_nbd.stdout}}'
-
-    - name: map nbd middle root image
+    - name: map nbd root image
       shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-root-images/root-builder"
       register: map_nbd
     - set_fact:
-        middle_root_nbd: '{{map_nbd.stdout}}'
+        root_nbd: '{{map_nbd.stdout}}'
 
     - name: map nbd default system rw image
       shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map  rbd-system-rw/root-builder"
@@ -62,7 +53,7 @@
           root_password: "$6$EQArW9CAtSgpl$6daW4PpbizoPFi370vzhNdzhpYzPnB3ichEedGBQsei9D2iyzbC0pwFWX7OMSdbFdx/fWBAg.OyfMgFrBfn11/" # TODO: change it
           grub_timeout: 1
           layout:
-          - device: "{{lower_root_nbd}}"
+          - device: "{{root_nbd}}"
             partitions:
             - num: 1
               size: 1M
@@ -77,16 +68,6 @@
               type: 8200
               fs: ext4
               mount: /
-          - device: "{{middle_root_nbd}}"
-            partitions:
-            - num: 1
-              size: 1M
-              type: ef02
-            - num: 2
-              # no size
-              type: 8200
-              fs: ext4
-              mount: /mnt/__middle_root
           - device: "{{system_rw_nbd}}"
             partitions:
             - num: 1
@@ -96,7 +77,7 @@
               # no size
               type: 8200
               fs: ext4
-              mount: /mnt/__upper_var
+              mount: /mnt/__system_rw
           install_packages:
           - less
 #          - qemu-guest-agent
@@ -109,13 +90,13 @@
         state: directory
       register: tempfile_mount_root
 #
-    - name: remount block (lower)
+    - name: remount block
       block:
 
-      - name: remount lower root image
-        command: "mount {{lower_root_nbd}}p3 {{tempfile_mount_root.path}}"
+      - name: remount root image
+        command: "mount {{root_nbd}}p3 {{tempfile_mount_root.path}}"
       - name: remount boot image
-        command: "mount {{lower_root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
+        command: "mount {{root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
 
       - name: create ssh config dir
         file:
@@ -154,33 +135,6 @@
         #    in case the hardware does not support it)
         # 2. this is a VM, time is set by the host so it's useless
 
-      always:
-      - name: fsync
-        command: sync
-      - name: unmount boot image
-        command: "umount {{tempfile_mount_root.path}}/boot"
-      - name: unmount root image
-        command: "umount {{tempfile_mount_root.path}}"
-
-    - name: load overlayfs
-      modprobe:
-          name: overlay
-          state: present
-
-    - name: remount block (lower+middle)
-      block:
-
-#      - name: remount lower root image
-#        command: "mount {{lower_root_nbd}}p3 {{tempfile_mount_root.path}}/mnt/__lower_root"
-#      - name: remount middle root image
-#        command: "mount {{middle_root_nbd}}p2 {{tempfile_mount_root.path}}/mnt/__middle_root"
-#      - name: overlay root
-#        command: "mount -t overlay overlay -o lowerdir={{tempfile_mount_root.path}}/__lower_root,upperdir={{tempfile_mount_root.path}}/__middle_root {{tempfile_mount_root.path}}/"
-      - name: remount lower root image
-        command: "mount {{lower_root_nbd}}p3 {{tempfile_mount_root.path}}"
-      - name: remount boot image
-        command: "mount {{lower_root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
-
       - name: make mount point for system read-write
         file:
             path: "{{tempfile_mount_root.path}}/mnt/__system_rw"
@@ -212,18 +166,15 @@
             fe_pk: hostvars['root-builder'].fe_pk
             fe_addr: hostvars['root-builder'].fe_addr
 
-      - command: "lsblk -o uuid -nJ {{lower_root_nbd}}p2"
+      - command: "lsblk -o uuid -nJ {{root_nbd}}p2"
         register: lsblk_boot
-      - command: "lsblk -o uuid -nJ {{lower_root_nbd}}p3"
-        register: lsblk_lower_root
-      - command: "lsblk -o uuid -nJ {{middle_root_nbd}}p2"
-        register: lsblk_middle_root
+      - command: "lsblk -o uuid -nJ {{root_nbd}}p3"
+        register: lsblk_root
       - command: "lsblk -o uuid -nJ {{system_rw_nbd}}p2"
         register: lsblk_system_rw
       - set_fact:
           lsblk_boot: "{{lsblk_boot.stdout|from_json}}"
-          lsblk_lower_root: "{{lsblk_lower_root.stdout|from_json}}"
-          lsblk_middle_root: "{{lsblk_middle_root.stdout|from_json}}"
+          lsblk_root: "{{lsblk_root.stdout|from_json}}"
           lsblk_system_rw: "{{lsblk_system_rw.stdout|from_json}}"
 
       - name: configure fstab
@@ -232,8 +183,7 @@
             dest: "{{tempfile_mount_root.path}}/etc/fstab"
         vars:
             boot_uuid: "{{lsblk_boot['blockdevices'][0]['uuid']}}"
-            lower_root_uuid: "{{lsblk_lower_root['blockdevices'][0]['uuid']}}"
-            middle_root_uuid: "{{lsblk_middle_root['blockdevices'][0]['uuid']}}"
+            root_uuid: "{{lsblk_root['blockdevices'][0]['uuid']}}"
             system_rw_uuid: "{{lsblk_system_rw['blockdevices'][0]['uuid']}}"
 
       - name: configure replacement init
@@ -257,13 +207,7 @@
         command: "umount {{tempfile_mount_root.path}}/boot"
       - name: unmount overlay root
         command: "umount {{tempfile_mount_root.path}}"
-#      - name: unmount middle root image
-#        command: "umount {{tempfile_mount_root.path}}/mnt/__lower_root"
-#      - name: unmount lower root image
-#        command: "umount {{tempfile_mount_root.path}}/mnt/__middle_root"
 
     always:
     - name: unmap rbd device
-      command: "rbd-nbd unmap {{lower_root_nbd}}"
-    - name: unmap rbd device
-      command: "rbd-nbd unmap {{middle_root_nbd}}"
+      command: "rbd-nbd unmap {{root_nbd}}"
