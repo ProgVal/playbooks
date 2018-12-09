@@ -39,7 +39,7 @@
   <!-- VM-specific read-write for the system -->
   <qemu:commandline>
     <qemu:arg value='-drive' />
-    <qemu:arg value='file=rbd:rbd-system-rw/root-builder:id=carbon-libvirt,format=raw,id=drive3,if=none' />
+    <qemu:arg value='file=rbd:rbd-system-rw/root-builder:id=carbon-libvirt,format=raw,id=drive3,if=none,cache=writeback' />
     <qemu:arg value='-device' />
     <qemu:arg value='driver=ide-hd,drive=drive3,discard_granularity=512' />
   </qemu:commandline>
