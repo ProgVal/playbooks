@@ -1,0 +1,3 @@
+- command: "lsblk -o uuid -nJ {{item.device}}"
+  register: lsblk_output
+- set_fact: "{{item.var}}={{lsblk_output.stdout|from_json}}"

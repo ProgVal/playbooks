@@ -5,6 +5,9 @@
     command: ceph osd pool create rbd-root-images 16 replicated replicated_hosts_hdd
     when: '"rbd-root-images" not in rbd_images'
 - hosts: root-builder-bootstrap.helium
+  vars:
+    ceph_client_name: client.root-builder-bootstrap
+    target_hostname: root-builder
   pre_tasks:
   - apt:
       name: aptitude
@@ -14,7 +17,6 @@
   roles:
   - friendship-express
   - role: ceph-rbd
-    ceph_client_name: root-builder-bootstrap
     ceph_rbd_rw_pools:
     - rbd-root-images
     - rbd-common-root-images
@@ -23,89 +25,30 @@
   - action: ceph_facts
     delegate_to: ceph-mon.helium
   - name: create middle root image
-    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-root-images/root-builder
-    when: '"root-builder" not in rbd_images["rbd-root-images"]'
+    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-root-images/{{target_hostname}}
+    when: 'target_hostname not in rbd_images["rbd-root-images"]'
   - name: create middle root image
-    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-system-rw/root-builder
-    when: '"root-builder" not in rbd_images["rbd-system-rw"]'
+    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-system-rw/{{target_hostname}}
+    when: 'target_hostname not in rbd_images["rbd-system-rw"]'
 
   - name: nbd mount block
     block:
 
     - name: map nbd root image
-      shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map rbd-root-images/root-builder"
+      shell: "CEPH_ARGS=\"--name {{ceph_client_name}}\" rbd-nbd map rbd-root-images/{{target_hostname}}"
       register: map_nbd
     - set_fact:
         root_nbd: '{{map_nbd.stdout}}'
 
     - name: map nbd default system rw image
-      shell: "CEPH_ARGS=\"--id root-builder-bootstrap\" rbd-nbd map  rbd-system-rw/root-builder"
+      shell: "CEPH_ARGS=\"--name {{ceph_client_name}}\" rbd-nbd map  rbd-system-rw/{{target_hostname}}"
       register: map_nbd
     - set_fact:
         system_rw_nbd: '{{map_nbd.stdout}}'
 
-    - name: install system
-      include_role:
-          name: debootstrap
-      vars:
-          release: stretch
-          tgt_hostname: root-builder
-          root_password: "$6$EQArW9CAtSgpl$6daW4PpbizoPFi370vzhNdzhpYzPnB3ichEedGBQsei9D2iyzbC0pwFWX7OMSdbFdx/fWBAg.OyfMgFrBfn11/" # TODO: change it
-          grub_timeout: 1
-          layout:
-          - device: "{{root_nbd}}"
-            partitions:
-            - num: 1
-              size: 1M
-              type: ef02
-            - num: 2
-              size: 100M
-              type: 8200
-              fs: ext4
-              mount: /boot
-            - num: 3
-              size: 100M
-              type: 8200
-              fs: ext4
-              mount: /mnt/__middle_etc
-              encrypt: yes
-              passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
-              target: root_builder_crypt_etc
-            - num: 4
-              # no size
-              type: 8200
-              fs: ext4
-              mount: /
-              mkfs_options: "-O ^has_journal"
-          - device: "{{system_rw_nbd}}"
-            partitions:
-            - num: 1
-              size: 1M
-              type: ef02
-            - num: 2
-              # no size
-              type: 8200
-              fs: ext4
-              mount: /mnt/__system_rw
-              encrypt: yes
-              passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
-              target: root_builder_crypt_system_rw
-          install_packages:
-          - less
-          - cryptsetup
-          - python
-#          - qemu-guest-agent
-          network:
-          - interface: eth0
-            address: dhcp
-          users:
-            val:
-              uid: 1000
-              groups:
-              - sudo
-              authorized_keys:
-              - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE53tpEGjrcLPe+eAHsIjz0u1q51JFSW61kq5FPS67I8 ansible@particle
-              - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIjJoY4XBTTNsxLVF/sUKBI4WGR2AIiR9qfMdspnsRfJ ssh@particle
+    - name: run debootsrap
+      import_tasks: utils/run_debootstrap.yml
+      static: yes
 
     - name: create temporary keyfile
       tempfile:
@@ -113,16 +56,15 @@
       register: tempfile_keyfile
     - name: write keyfile
       copy:
-        content: "{{hostvars['root-builder'].disk_keyfile}}"
+        content: "{{hostvars[target_hostname].disk_keyfile}}"
         dest: "{{tempfile_keyfile.path}}"
-    - name: add keyfile to middle etc
-      command: "cryptsetup luksAddKey {{root_nbd}}p3 {{tempfile_keyfile.path}} --iter-time 1000"
+    - name: add keyfile to LUKS devices
+      command: "cryptsetup luksAddKey {{item}} {{tempfile_keyfile.path}} --iter-time 1000"
       args:
-          stdin: "{{hostvars['root-builder'].disk_passphrase}}"
-    - name: add keyfile to system rw
-      command: "cryptsetup luksAddKey {{system_rw_nbd}}p2 {{tempfile_keyfile.path}} --iter-time 1000"
-      args:
-          stdin: "{{hostvars['root-builder'].disk_passphrase}}"
+          stdin: "{{hostvars[target_hostname].disk_passphrase}}"
+      with_items:
+      - "{{root_nbd}}p3"
+      - "{{system_rw_nbd}}p2"
 
     - tempfile:
         state: directory
@@ -146,35 +88,14 @@
       - name: remount system rw image
         command: "mount /dev/mapper/root_builder_crypt_system_rw {{tempfile_mount_root.path}}/mnt/__system_rw"
 
-      - name: create ssh config dir
-        file:
-            path: "{{tempfile_mount_root.path}}/root/.ssh/"
-            state: directory
-      - name: create authorized_keys
-        file:
-            path: "{{tempfile_mount_root.path}}/root/.ssh/authorized_keys"
-            state: touch
-      - name: add ansible ssh key
-        lineinfile:
-            dest: "{{tempfile_mount_root.path}}/root/.ssh/authorized_keys"
-            regexp: ".* ansible@particle$"
-            line: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE53tpEGjrcLPe+eAHsIjz0u1q51JFSW61kq5FPS67I8 ansible@particle"
-            state: present
-      - name: add admin ssh key
-        lineinfile:
-            dest: "{{tempfile_mount_root.path}}/root/.ssh/authorized_keys"
-            regexp: ".* ssh@particle$"
-            line: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIjJoY4XBTTNsxLVF/sUKBI4WGR2AIiR9qfMdspnsRfJ ssh@particle"
-            state: present
+      - name: add authorized_keys
+        import_tasks: utils/ssh_authorized_keys.yml
+        static: yes
+        vars:
+            home_path: "{{tempfile_mount_root.path}}/root"
 
-      - name: copy cjdns
-        copy:
-            dest: "{{tempfile_mount_root.path}}/root/"
-            src: cjdns_0.20_amd64.deb
 #      - name: install packages
 #        command: chroot {{tempfile_mount_root.path}} eatmydata -- apt-get install -q -y python # htop bash-completion locales debootstrap openssh-server # python3 ruby php vim emacs debian-goodies iotop iftop nethogs tcpdump lsof
-      - name: install cjdns
-        command: chroot {{tempfile_mount_root.path}} eatmydata -- dpkg -i /root/cjdns_0.20_amd64.deb
 
       - name: disable systemd-timesyncd
         command: chroot {{tempfile_mount_root.path}} systemctl disable systemd-timesyncd
@@ -183,67 +104,43 @@
         #    in case the hardware does not support it)
         # 2. this is a VM, time is set by the host so it's useless
 
-      - name: prepare etc overlay
+      - name: prepare mount points
         file:
             path: "{{tempfile_mount_root.path}}/mnt/{{item}}"
             state: directory
         with_items:
         - __middle_etc
         - __upper_etc
+        - __system_rw/var-log/datadir
+        - __system_rw/var-log/workdir
 
-      - name: prepare var-log overlay
-        file:
-            path: "{{tempfile_mount_root.path}}/mnt/__system_rw/{{item}}"
-            state: directory
+      - name: install and configure cjdns
+        import_tasks: utils/cjdns.yml
+        static: yes
+        vars:
+            chroot_dir: "{{tempfile_mount_root.path}}"
+
+      - name: get uuids
+        include_tasks: utils/lsblk.yml
         with_items:
-        - var-log/datadir
-        - var-log/workdir
+        - {device: "{{root_nbd}}p2", var: lsblk_boot}
+        - {device: "{{root_nbd}}p3", var: lsblk_middle_etc}
+        - {device: "{{root_nbd}}p4", var: lsblk_root}
+        - {device: "{{system_rw_nbd}}p2", var: lsblk_system_rw}
 
-      - name: configure cjdns
+      - name: configure fstab and crypttab
         template:
-            src: cjdroute.conf.j2
-            dest: "{{tempfile_mount_root.path}}/mnt/__middle_etc/cjdroute.conf"
-            mode: "u=rw,g=,o="
-        vars:
-            fe_sk: "{{hostvars['root-builder'].fe_sk}}"
-            fe_pk: "{{hostvars['root-builder'].fe_pk}}"
-            fe_addr: "{{hostvars['root-builder'].fe_addr}}"
-
-      - command: "lsblk -o uuid -nJ {{root_nbd}}p2"
-        register: lsblk_boot
-      - command: "lsblk -o uuid -nJ {{root_nbd}}p3"
-        register: lsblk_middle_etc
-      - command: "lsblk -o uuid -nJ {{root_nbd}}p4"
-        register: lsblk_root
-      - command: "lsblk -o uuid -nJ {{system_rw_nbd}}p2"
-        register: lsblk_system_rw
-      - set_fact:
-          lsblk_boot: "{{lsblk_boot.stdout|from_json}}"
-          lsblk_middle_etc: "{{lsblk_middle_etc.stdout|from_json}}"
-          lsblk_root: "{{lsblk_root.stdout|from_json}}"
-          lsblk_system_rw: "{{lsblk_system_rw.stdout|from_json}}"
-
-      - name: configure fstab
-        template:
-            src: fstab
-            dest: "{{tempfile_mount_root.path}}/etc/fstab"
+            src: "{{item}}"
+            dest: "{{tempfile_mount_root.path}}/etc/{{item}}"
         vars:
             boot_uuid: "{{lsblk_boot['blockdevices'][0]['uuid']}}"
             root_uuid: "{{lsblk_root['blockdevices'][0]['uuid']}}"
             middle_etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
             system_rw_uuid: "{{lsblk_system_rw['blockdevices'][0]['uuid']}}"
             etc_crypt_target: root_builder_crypt_etc
-
-      - name: configure crypttab
-        template:
-            src: crypttab
-            dest: "{{tempfile_mount_root.path}}/etc/crypttab"
-        vars:
-            boot_uuid: "{{lsblk_boot['blockdevices'][0]['uuid']}}"
-            root_uuid: "{{lsblk_root['blockdevices'][0]['uuid']}}"
-            middle_etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
-            system_rw_uuid: "{{lsblk_system_rw['blockdevices'][0]['uuid']}}"
-            etc_crypt_target: root_builder_crypt_etc
+        with_items:
+        - fstab
+        - crypttab
 
       - name: configure sshd
         template:
@@ -258,7 +155,7 @@
         vars:
             etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
             etc_crypt_target: root_builder_crypt_etc
-      - name: reconfigure GRUB ot use the new init
+      - name: reconfigure GRUB to use the new init
         replace:
             regexp: "-amd64 root="
             replace: "-amd64 init=/sbin/overlayInit.sh root="

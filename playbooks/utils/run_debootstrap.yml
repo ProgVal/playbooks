@@ -1,0 +1,63 @@
+- name: install system
+  include_role:
+      name: debootstrap
+  vars:
+      release: stretch
+      tgt_hostname: root-builder
+      root_password: "$6$EQArW9CAtSgpl$6daW4PpbizoPFi370vzhNdzhpYzPnB3ichEedGBQsei9D2iyzbC0pwFWX7OMSdbFdx/fWBAg.OyfMgFrBfn11/" # TODO: change it
+      grub_timeout: 1
+      layout:
+      - device: "{{root_nbd}}"
+        partitions:
+        - num: 1
+          size: 1M
+          type: ef02
+        - num: 2
+          size: 100M
+          type: 8200
+          fs: ext4
+          mount: /boot
+        - num: 3
+          size: 100M
+          type: 8200
+          fs: ext4
+          mount: /mnt/__middle_etc
+          encrypt: yes
+          passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
+          target: root_builder_crypt_etc
+        - num: 4
+          # no size
+          type: 8200
+          fs: ext4
+          mount: /
+          mkfs_options: "-O ^has_journal"
+      - device: "{{system_rw_nbd}}"
+        partitions:
+        - num: 1
+          size: 1M
+          type: ef02
+        - num: 2
+          # no size
+          type: 8200
+          fs: ext4
+          mount: /mnt/__system_rw
+          encrypt: yes
+          passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
+          target: root_builder_crypt_system_rw
+      install_packages:
+      - less
+      - cryptsetup
+      - python
+#          - qemu-guest-agent
+      network:
+      - interface: eth0
+        address: dhcp
+      users:
+        val:
+          uid: 1000
+          groups:
+          - sudo
+          authorized_keys:
+          - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE53tpEGjrcLPe+eAHsIjz0u1q51JFSW61kq5FPS67I8 ansible@particle
+          - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIjJoY4XBTTNsxLVF/sUKBI4WGR2AIiR9qfMdspnsRfJ ssh@particle
+

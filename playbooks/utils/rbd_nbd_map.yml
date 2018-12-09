@@ -1,0 +1,5 @@
+- name: map nbd image
+  shell: "CEPH_ARGS=\"--name {{ceph_client_name}}\" rbd-nbd map {{rbd_image_spec}}"
+  register: map_nbd
+- set_fact: "{{assign_dev_name}}={{map_nbd.stdout}}"
+

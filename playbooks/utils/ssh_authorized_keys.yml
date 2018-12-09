@@ -1,0 +1,20 @@
+- name: create ssh config dir
+  file:
+      path: "{{tempfile_mount_root.path}}/root/.ssh/"
+      state: directory
+- name: create authorized_keys
+  file:
+      path: "{{home_path}}/.ssh/authorized_keys"
+      state: touch
+- name: add ansible ssh key
+  lineinfile:
+      dest: "{{home_path}}/.ssh/authorized_keys"
+      regexp: ".* ansible@particle$"
+      line: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE53tpEGjrcLPe+eAHsIjz0u1q51JFSW61kq5FPS67I8 ansible@particle"
+      state: present
+- name: add admin ssh key
+  lineinfile:
+      dest: "{{home_path}}/.ssh/authorized_keys"
+      regexp: ".* ssh@particle$"
+      line: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIjJoY4XBTTNsxLVF/sUKBI4WGR2AIiR9qfMdspnsRfJ ssh@particle"
+      state: present

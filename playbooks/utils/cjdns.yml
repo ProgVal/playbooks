@@ -1,0 +1,15 @@
+- name: copy cjdns
+  copy:
+      dest: "{{chroot_dir}}/root/"
+      src: cjdns_0.20_amd64.deb
+- name: install cjdns
+  command: chroot {{chroot_dir}} eatmydata -- dpkg -i /root/cjdns_0.20_amd64.deb
+- name: configure cjdns
+  template:
+      src: cjdroute.conf.j2
+      dest: "{{chroot_dir}}/mnt/__middle_etc/cjdroute.conf"
+      mode: "u=rw,g=,o="
+  vars:
+      fe_sk: "{{hostvars[target_hostname].fe_sk}}"
+      fe_pk: "{{hostvars[target_hostname].fe_pk}}"
+      fe_addr: "{{hostvars[target_hostname].fe_addr}}"
