@@ -197,9 +197,9 @@
             dest: "{{tempfile_mount_root.path}}/mnt/__middle_etc/cjdroute.conf"
             mode: "u=rw,g=,o="
         vars:
-            fe_sk: hostvars['root-builder'].fe_sk
-            fe_pk: hostvars['root-builder'].fe_pk
-            fe_addr: hostvars['root-builder'].fe_addr
+            fe_sk: "{{hostvars['root-builder'].fe_sk}}"
+            fe_pk: "{{hostvars['root-builder'].fe_pk}}"
+            fe_addr: "{{hostvars['root-builder'].fe_addr}}"
 
       - command: "lsblk -o uuid -nJ {{root_nbd}}p2"
         register: lsblk_boot
