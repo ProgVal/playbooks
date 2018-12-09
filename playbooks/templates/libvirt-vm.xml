@@ -31,6 +31,11 @@
     <qemu:arg value='-drive' />
     <qemu:arg value='file=rbd:rbd-root-images/root-builder:id=admin,format=raw,id=drive2,if=virtio,readonly=on' />
   </qemu:commandline>
+  <!-- small block device containing the keyfile for the VM's etc -->
+  <qemu:commandline>
+    <qemu:arg value='-drive' />
+    <qemu:arg value='file=/run/root-builder-keyfile,format=raw,id=drive4,if=virtio,readonly=on' />
+  </qemu:commandline>
   <!-- VM-specific read-write for the system -->
   <qemu:commandline>
     <qemu:arg value='-drive' />

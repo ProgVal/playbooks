@@ -15,6 +15,12 @@
         name: root-builder
         command: undefine
     failed_when: False
+
+  - name: write keyfile on dom0
+    copy: 
+        dest: "/run/root-builder-keyfile"
+        content: "{{hostvars['root-builder'].etc_disk_keyfile}}"
+
   - name: define root-builder
     virt:
         name: root-builder

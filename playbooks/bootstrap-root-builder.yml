@@ -45,6 +45,7 @@
         system_rw_nbd: '{{map_nbd.stdout}}'
 
     - name: install system
+      when: false
       include_role:
           name: debootstrap
       vars:
@@ -89,29 +90,45 @@
               mount: /mnt/__system_rw
           install_packages:
           - less
+          - cryptsetup
+          - python
 #          - qemu-guest-agent
           network:
           - interface: eth0
             address: dhcp
           users: []
 
+    - name: create temporary keyfile
+      tempfile:
+          path: /run/
+      register: tempfile_keyfile
+    - name: write keyfile
+      copy:
+        content: "{{hostvars['root-builder'].etc_disk_keyfile}}"
+        dest: "{{tempfile_keyfile.path}}"
+    - name: add keyfile
+      command: "cryptsetup luksAddKey {{root_nbd}}p3 --key-file {{tempfile_keyfile.path}}"
+      args:
+          stdin: "{{hostvars['root-builder'].etc_disk_passphrase}}"
+
     - tempfile:
         state: directory
       register: tempfile_mount_root
-#
+
     - name: remount block
       block:
 
-      - name: decrypt middle etc image
-        command: "cryptsetup luksOpen {{root_nbd}}p3 root_builder_cryptetc"
-        args:
-            stdin: "{{hostvars['root-builder'].etc_disk_passphrase}}"
-      - name: remount middle etc image
-        command: "mount /dev/mapper/root_builder_cryptetc {{tempfile_mount_root.path}}/mnt/__middle_etc"
       - name: remount root image
         command: "mount {{root_nbd}}p4 {{tempfile_mount_root.path}}"
       - name: remount boot image
         command: "mount {{root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
+
+      - name: test
+        command: "cat {{tempfile_keyfile.path}}"
+      - name: decrypt middle etc image
+        command: "cryptsetup luksOpen {{root_nbd}}p3 root_builder_cryptetc --key-file {{tempfile_keyfile.path}}"
+      - name: remount middle etc image
+        command: "mount /dev/mapper/root_builder_cryptetc {{tempfile_mount_root.path}}/mnt/__middle_etc"
 
       - name: create ssh config dir
         file:
@@ -138,8 +155,8 @@
         copy:
             dest: "{{tempfile_mount_root.path}}/root/"
             src: cjdns_0.20_amd64.deb
-      - name: install packages
-        command: chroot {{tempfile_mount_root.path}} eatmydata -- apt-get install -q -y python # htop bash-completion locales debootstrap openssh-server # python3 ruby php vim emacs debian-goodies iotop iftop nethogs tcpdump lsof
+#      - name: install packages
+#        command: chroot {{tempfile_mount_root.path}} eatmydata -- apt-get install -q -y python # htop bash-completion locales debootstrap openssh-server # python3 ruby php vim emacs debian-goodies iotop iftop nethogs tcpdump lsof
       - name: install cjdns
         command: chroot {{tempfile_mount_root.path}} eatmydata -- dpkg -i /root/cjdns_0.20_amd64.deb
 
@@ -160,8 +177,11 @@
 
       - name: prepare etc overlay
         file:
-            path: "{{tempfile_mount_root.path}}/mnt/__upper_etc/"
+            path: "{{tempfile_mount_root.path}}/mnt/{{item}}"
             state: directory
+        with_items:
+        - __middle_etc
+        - __upper_etc
 
       - name: prepare var-log overlay
         file:
@@ -202,7 +222,18 @@
         vars:
             boot_uuid: "{{lsblk_boot['blockdevices'][0]['uuid']}}"
             root_uuid: "{{lsblk_root['blockdevices'][0]['uuid']}}"
-            etc_uuid: "{{lsblk_etc['blockdevices'][0]['uuid']}}"
+            middle_etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
+            system_rw_uuid: "{{lsblk_system_rw['blockdevices'][0]['uuid']}}"
+            etc_crypt_target: root_builder_cryptetc
+
+      - name: configure crypttab
+        template:
+            src: crypttab
+            dest: "{{tempfile_mount_root.path}}/etc/crypttab"
+        vars:
+            boot_uuid: "{{lsblk_boot['blockdevices'][0]['uuid']}}"
+            root_uuid: "{{lsblk_root['blockdevices'][0]['uuid']}}"
+            middle_etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
             system_rw_uuid: "{{lsblk_system_rw['blockdevices'][0]['uuid']}}"
             etc_crypt_target: root_builder_cryptetc
 
@@ -211,45 +242,29 @@
             src: overlayInit.sh
             dest: "{{tempfile_mount_root.path}}/sbin/overlayInit.sh"
             mode: "u=rwx,g=rx,o=rx"
+        vars:
+            etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
+            etc_crypt_target: root_builder_cryptetc
       - name: reconfigure GRUB ot use the new init
         replace:
             regexp: "-amd64 root="
             replace: "-amd64 init=/sbin/overlayInit.sh root="
             path: "{{tempfile_mount_root.path}}/boot/grub/grub.cfg"
 
-      - name: pseudo-fs block
-        block:
-        - name: bind mount pseudo filesystems
-          command: "mount --bind /{{ item }} {{tempfile_mount_root.path}}/{{ item }} warn=no"
-          with_items:
-          - proc
-          - sys
-          - dev
-          - dev/pts
-        - name: update initramfs
-          command: "chroot {{tempfile_mount_root.path}} update-initramfs -u"
-        - name: update GRUB
-          command: "chroot {{tempfile_mount_root.path}} update-grub"
-        - name: umount pseudo filesystems
-          command: "umount -l {{tempfile_mount_root.path}}/{{ item }}"
-          with_items:
-          - dev/pts
-          - dev
-          - sys
-          - proc
-
       always:
       - name: fsync
         command: sync
 
+      - name: unmount system rw image
+        command: "umount {{tempfile_mount_root.path}}/mnt/__middle_etc"
       - name: unmount system rw image
         command: "umount {{tempfile_mount_root.path}}/mnt/__system_rw"
       - name: unmount boot image
         command: "umount {{tempfile_mount_root.path}}/boot"
       - name: unmount overlay root
         command: "umount {{tempfile_mount_root.path}}"
-#      - name: close encrypted root
-#        command: "cryptsetup luksClose root_builder_cryptroot"
+      - name: close encrypted etc
+        command: "cryptsetup luksClose root_builder_cryptetc"
 
     always:
     - name: unmap rbd device

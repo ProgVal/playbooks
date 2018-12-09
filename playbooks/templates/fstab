@@ -1,9 +1,9 @@
 # <file system>           <mount point>       <type>    <options>              <dump>  <pass>
 UUID={{root_uuid}}        /                   ext4      noatime,nodiratime,ro  0       1
-#/dev/mapper/{{root_crypt_target}} /                   ext4      noatime,nodiratime,ro  0       1
 #overlay                   /                   overlay   noatime,nodiratime,lowerdir=/mnt/__lower_root:/mnt/__middle_root,upperdir=/mnt/__upper_root 0 0
 #tmpfs                     /mnt/__upper_etc    tmpfs     noatime,nodiratime     0       0
-#overlay                   /etc                overlay   noatime,nodiratime,lowerdir=/etc,upperdir=/mnt/__upper_etc 0 0
+/dev/mapper/root_builder_cryptetc /mnt/__middle_etc ext4 noatime,nodiratime,ro 0       1
+overlay                   /etc                overlay   noatime,nodiratime,lowerdir=/etc:/mnt/__middle_etc,upperdir=/mnt/__upper_etc/datadir,workdir=/mnt/__upper_etc/workdir,x-systemd.requires=/mnt/__middle_etc 0 0
 UUID={{system_rw_uuid}}    /mnt/__system_rw   ext4      noatime,nodiratime     0       1
 overlay                    /var/log           overlay   noatime,nodiratime,lowerdir=/var/log,upperdir=/mnt/__system_rw/var-log/datadir,workdir=/mnt/__system_rw/var-log/workdir,x-systemd.requires=/mnt/__system_rw 0 0
 UUID={{boot_uuid}}        /boot               ext4      noatime,nodiratime,ro  0       2
