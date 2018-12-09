@@ -1,0 +1,6 @@
+UsePAM yes
+PasswordAuthentication no
+PermitRootLogin prohibit-password
+ChallengeResponseAuthentication no
+Subsystem   sftp    /usr/lib/openssh/sftp-server
+

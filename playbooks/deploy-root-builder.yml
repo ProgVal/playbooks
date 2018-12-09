@@ -19,7 +19,7 @@
   - name: write keyfile on dom0
     copy: 
         dest: "/run/root-builder-keyfile"
-        content: "{{hostvars['root-builder'].etc_disk_keyfile}}"
+        content: "{{hostvars['root-builder'].disk_keyfile}}"
 
   - name: define root-builder
     virt:

@@ -45,7 +45,6 @@
         system_rw_nbd: '{{map_nbd.stdout}}'
 
     - name: install system
-      when: false
       include_role:
           name: debootstrap
       vars:
@@ -70,8 +69,8 @@
               fs: ext4
               mount: /mnt/__middle_etc
               encrypt: yes
-              passphrase: "{{ hostvars['root-builder'].etc_disk_passphrase }}"
-              target: root_builder_cryptroot
+              passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
+              target: root_builder_crypt_etc
             - num: 4
               # no size
               type: 8200
@@ -88,6 +87,9 @@
               type: 8200
               fs: ext4
               mount: /mnt/__system_rw
+              encrypt: yes
+              passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
+              target: root_builder_crypt_system_rw
           install_packages:
           - less
           - cryptsetup
@@ -96,7 +98,14 @@
           network:
           - interface: eth0
             address: dhcp
-          users: []
+          users:
+            val:
+              uid: 1000
+              groups:
+              - sudo
+              authorized_keys:
+              - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE53tpEGjrcLPe+eAHsIjz0u1q51JFSW61kq5FPS67I8 ansible@particle
+              - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIjJoY4XBTTNsxLVF/sUKBI4WGR2AIiR9qfMdspnsRfJ ssh@particle
 
     - name: create temporary keyfile
       tempfile:
@@ -104,12 +113,16 @@
       register: tempfile_keyfile
     - name: write keyfile
       copy:
-        content: "{{hostvars['root-builder'].etc_disk_keyfile}}"
+        content: "{{hostvars['root-builder'].disk_keyfile}}"
         dest: "{{tempfile_keyfile.path}}"
-    - name: add keyfile
-      command: "cryptsetup luksAddKey {{root_nbd}}p3 --key-file {{tempfile_keyfile.path}}"
+    - name: add keyfile to middle etc
+      command: "cryptsetup luksAddKey {{root_nbd}}p3 {{tempfile_keyfile.path}} --iter-time 100"
       args:
-          stdin: "{{hostvars['root-builder'].etc_disk_passphrase}}"
+          stdin: "{{hostvars['root-builder'].disk_passphrase}}"
+    - name: add keyfile to system rw
+      command: "cryptsetup luksAddKey {{system_rw_nbd}}p2 {{tempfile_keyfile.path}} --iter-time 100"
+      args:
+          stdin: "{{hostvars['root-builder'].disk_passphrase}}"
 
     - tempfile:
         state: directory
@@ -123,12 +136,15 @@
       - name: remount boot image
         command: "mount {{root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
 
-      - name: test
-        command: "cat {{tempfile_keyfile.path}}"
       - name: decrypt middle etc image
-        command: "cryptsetup luksOpen {{root_nbd}}p3 root_builder_cryptetc --key-file {{tempfile_keyfile.path}}"
+        command: "cryptsetup luksOpen {{root_nbd}}p3 root_builder_crypt_etc --key-file {{tempfile_keyfile.path}}"
       - name: remount middle etc image
-        command: "mount /dev/mapper/root_builder_cryptetc {{tempfile_mount_root.path}}/mnt/__middle_etc"
+        command: "mount /dev/mapper/root_builder_crypt_etc {{tempfile_mount_root.path}}/mnt/__middle_etc"
+
+      - name: decrypt system rw image
+        command: "cryptsetup luksOpen {{system_rw_nbd}}p2 root_builder_crypt_system_rw --key-file {{tempfile_keyfile.path}}"
+      - name: remount system rw image
+        command: "mount /dev/mapper/root_builder_crypt_system_rw {{tempfile_mount_root.path}}/mnt/__system_rw"
 
       - name: create ssh config dir
         file:
@@ -166,14 +182,6 @@
         # 1. it tries to write to /var/lib/systemd/clock (to ensure a monotonic clock
         #    in case the hardware does not support it)
         # 2. this is a VM, time is set by the host so it's useless
-
-      - name: make mount point for system read-write
-        file:
-            path: "{{tempfile_mount_root.path}}/mnt/__system_rw"
-            state: directory
-
-      - name: remount system rw image
-        command: "mount {{system_rw_nbd}}p2 {{tempfile_mount_root.path}}/mnt/__system_rw"
 
       - name: prepare etc overlay
         file:
@@ -224,7 +232,7 @@
             root_uuid: "{{lsblk_root['blockdevices'][0]['uuid']}}"
             middle_etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
             system_rw_uuid: "{{lsblk_system_rw['blockdevices'][0]['uuid']}}"
-            etc_crypt_target: root_builder_cryptetc
+            etc_crypt_target: root_builder_crypt_etc
 
       - name: configure crypttab
         template:
@@ -235,7 +243,12 @@
             root_uuid: "{{lsblk_root['blockdevices'][0]['uuid']}}"
             middle_etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
             system_rw_uuid: "{{lsblk_system_rw['blockdevices'][0]['uuid']}}"
-            etc_crypt_target: root_builder_cryptetc
+            etc_crypt_target: root_builder_crypt_etc
+
+      - name: configure sshd
+        template:
+            src: sshd_config
+            dest: "{{tempfile_mount_root.path}}/etc/ssh/sshd_config"
 
       - name: configure replacement init
         template:
@@ -244,7 +257,7 @@
             mode: "u=rwx,g=rx,o=rx"
         vars:
             etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
-            etc_crypt_target: root_builder_cryptetc
+            etc_crypt_target: root_builder_crypt_etc
       - name: reconfigure GRUB ot use the new init
         replace:
             regexp: "-amd64 root="
@@ -264,7 +277,9 @@
       - name: unmount overlay root
         command: "umount {{tempfile_mount_root.path}}"
       - name: close encrypted etc
-        command: "cryptsetup luksClose root_builder_cryptetc"
+        command: "cryptsetup luksClose root_builder_crypt_etc"
+      - name: close encrypted system rw
+        command: "cryptsetup luksClose root_builder_crypt_system_rw"
 
     always:
     - name: unmap rbd device
