@@ -116,11 +116,11 @@
         content: "{{hostvars['root-builder'].disk_keyfile}}"
         dest: "{{tempfile_keyfile.path}}"
     - name: add keyfile to middle etc
-      command: "cryptsetup luksAddKey {{root_nbd}}p3 {{tempfile_keyfile.path}} --iter-time 100"
+      command: "cryptsetup luksAddKey {{root_nbd}}p3 {{tempfile_keyfile.path}} --iter-time 1000"
       args:
           stdin: "{{hostvars['root-builder'].disk_passphrase}}"
     - name: add keyfile to system rw
-      command: "cryptsetup luksAddKey {{system_rw_nbd}}p2 {{tempfile_keyfile.path}} --iter-time 100"
+      command: "cryptsetup luksAddKey {{system_rw_nbd}}p2 {{tempfile_keyfile.path}} --iter-time 1000"
       args:
           stdin: "{{hostvars['root-builder'].disk_passphrase}}"
 
@@ -267,6 +267,7 @@
       always:
       - name: fsync
         command: sync
+        changed_when: false
 
       - name: unmount system rw image
         command: "umount {{tempfile_mount_root.path}}/mnt/__middle_etc"

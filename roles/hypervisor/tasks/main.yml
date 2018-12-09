@@ -2,6 +2,7 @@
   command: 'ceph auth get-key client.{{ansible_hostname}}-libvirt'
   delegate_to: "{{groups['mons'][0]}}"
   register: ceph_key
+  changed_when: false
 - name: install libvirt-daemon-system
   apt:
     name: libvirt-daemon-system
