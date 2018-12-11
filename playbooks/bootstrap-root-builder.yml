@@ -160,24 +160,31 @@
         command: "chroot {{tempfile_mount_root.path}} systemctl enable {{item}}"
         with_items: "{{systemd_units}}"
 
+      # TODO: regen keys in the middle etc
       - name: configure sshd
         template:
             src: sshd_config
             dest: "{{tempfile_mount_root.path}}/etc/ssh/sshd_config"
 
-      - name: configure replacement init
-        template:
-            src: overlayInit.sh
-            dest: "{{tempfile_mount_root.path}}/sbin/overlayInit.sh"
-            mode: "u=rwx,g=rx,o=rx"
-        vars:
-            etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
-            etc_crypt_target: root_builder_crypt_etc
-      - name: reconfigure GRUB to use the new init
-        replace:
-            regexp: "-amd64 root="
-            replace: "-amd64 init=/sbin/overlayInit.sh root="
-            path: "{{tempfile_mount_root.path}}/boot/grub/grub.cfg"
+      - name: auto-load overlayfs kernel module
+        lineinfile:
+            path: "{{tempfile_mount_root.path}}/etc/modules"
+            line: "overlay"
+
+
+#      - name: configure replacement init
+#        template:
+#            src: overlayInit.sh
+#            dest: "{{tempfile_mount_root.path}}/sbin/overlayInit.sh"
+#            mode: "u=rwx,g=rx,o=rx"
+#        vars:
+#            etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
+#            etc_crypt_target: root_builder_crypt_etc
+#      - name: reconfigure GRUB to use the new init
+#        replace:
+#            regexp: "-amd64 root="
+#            replace: "-amd64 init=/sbin/overlayInit.sh root="
+#            path: "{{tempfile_mount_root.path}}/boot/grub/grub.cfg"
 
       always:
       - name: fsync
