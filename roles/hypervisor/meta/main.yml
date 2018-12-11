@@ -1,6 +1,6 @@
 dependencies:
 - role: ceph-rbd
-  ceph_client_name: "{{ansible_hostname}}-libvirt"
+  ceph_client_name: "client.{{ansible_hostname}}-libvirt"
   ceph_rbd_rw_pools:
   - rbd-system-rw
   #ceph_rbd_ro_pools: # qemu does not support opening ro http://tracker.ceph.com/issues/24506
