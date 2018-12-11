@@ -4,7 +4,9 @@ Requires=etc.mount
 DefaultDependencies=no
 Before=local-fs-pre.target
 Before=systemd-tmpfiles-setup-dev.service
+Before=systemd-tmpfiles-setup.service
 
 [Install]
 RequiredBy=local-fs-pre.target
 RequiredBy=systemd-tmpfiles-setup-dev.service
+RequiredBy=systemd-tmpfiles-setup.service

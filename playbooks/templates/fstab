@@ -1,7 +1,7 @@
 # <file system>                             <mount point>       <type>    <options>              <dump>  <pass>
 UUID={{root_uuid}}                          /                   ext4      defaults,noatime,nodiratime,ro  0       1
 /dev/mapper/root_builder_crypt_etc          /mnt/__middle_etc   ext4      defaults,noatime,nodiratime,ro 0       1
-#overlay                                     /etc                overlay   defaults,noatime,nodiratime,lowerdir=/etc:/mnt/__middle_etc,upperdir=/mnt/__upper_etc/datadir,workdir=/mnt/__upper_etc/workdir,x-systemd.requires=/mnt/__middle_etc 0 0
+overlay                                     /etc                overlay   defaults,noatime,nodiratime,lowerdir=/etc:/mnt/__middle_etc,upperdir=/mnt/__upper_etc/datadir,workdir=/mnt/__upper_etc/workdir,x-systemd.requires=/mnt/__middle_etc 0 0
 /dev/mapper/root_builder_crypt_system_rw    /mnt/__system_rw   ext4      defaults,noatime,nodiratime     0       1
 overlay                                     /var/log           overlay   defaults,noatime,nodiratime,lowerdir=/var/log,upperdir=/mnt/__system_rw/var-log/datadir,workdir=/mnt/__system_rw/var-log/workdir,x-systemd.requires=/mnt/__system_rw 0 0
 UUID={{boot_uuid}}                          /boot               ext4      defaults,noatime,nodiratime,ro  0       2
