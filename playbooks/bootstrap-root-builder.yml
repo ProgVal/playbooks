@@ -59,12 +59,14 @@
         content: "{{hostvars[target_hostname].disk_keyfile}}"
         dest: "{{tempfile_keyfile.path}}"
     - name: add keyfile to LUKS devices
-      command: "cryptsetup luksAddKey {{item}} {{tempfile_keyfile.path}} --iter-time 1000"
+      command: "cryptsetup luksAddKey {{item}} {{tempfile_keyfile.path}} --iter-time 1000 --key-slot 1"
       args:
           stdin: "{{hostvars[target_hostname].disk_passphrase}}"
+      failed_when: false
       with_items:
       - "{{root_nbd}}p3"
       - "{{system_rw_nbd}}p2"
+
 
     - tempfile:
         state: directory
