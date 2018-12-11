@@ -1,9 +1,12 @@
 [Unit]
-Description=mounts a tmpfs on /mnt/__upper_etc and creates datadir and workdir in it
+Description=Mount a tmpfs on /mnt/__upper_etc and creates datadir and workdir in it
 Before=etc.mount
+Before=local-fs-pre.target
+DefaultDependencies=no
 
 [Install]
 RequiredBy=etc.mount
+RequiredBy=local-fs-pre.target
 
 [Service]
 Type=oneshot

@@ -1,0 +1,10 @@
+[Unit]
+After=etc.mount
+Requires=etc.mount
+DefaultDependencies=no
+Before=local-fs-pre.target
+Before=systemd-tmpfiles-setup-dev.service
+
+[Install]
+RequiredBy=local-fs-pre.target
+RequiredBy=systemd-tmpfiles-setup-dev.service

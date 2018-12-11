@@ -147,6 +147,8 @@
       - set_fact:
           systemd_units:
           - upper-etc.service
+          - etc.target
+          - disk-keyfile.service
 
       - name: add systemd units
         template:

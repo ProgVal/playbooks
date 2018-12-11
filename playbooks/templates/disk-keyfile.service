@@ -1,0 +1,18 @@
+[Unit]
+Description=Copy the keyfile from /dev/vdb to /run/disk_keyfile
+Before=systemd-cryptsetup@root_builder_crypt_etc.service
+Before=systemd-cryptsetup@root_builder_crypt_system_rw.service
+Before=local-fs-pre.target
+DefaultDependencies=no
+
+[Install]
+RequiredBy=systemd-cryptsetup@root_builder_crypt_etc.service
+RequiredBy=systemd-cryptsetup@root_builder_crypt_system_rw.service
+RequiredBy=local-fs-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# 'cut' replaces trailing/padding \x00 bytes with a newline, tr removes that newline.
+ExecStart=/bin/sh -ec "cat /dev/vdb | cut -d '' -f1 | tr -d '\n' > /run/disk_keyfile; \
+                       chmod u=r,g=,o= /run/disk_keyfile"

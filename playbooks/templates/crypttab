@@ -1,3 +1,3 @@
 # <target name> <source device>     <key file>  <options>
-root_builder_crypt_etc UUID={{middle_etc_uuid}} /run/etc_keyfile luks,keyslot=1,readonly
-root_builder_crypt_system_rw UUID={{system_rw_uuid}} /run/etc_keyfile luks,keyslot=1,discard
+root_builder_crypt_etc UUID={{middle_etc_uuid}} /run/disk_keyfile luks,readonly
+root_builder_crypt_system_rw UUID={{system_rw_uuid}} /run/disk_keyfile luks,discard
