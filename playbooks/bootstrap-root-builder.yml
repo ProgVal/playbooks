@@ -171,21 +171,6 @@
             path: "{{tempfile_mount_root.path}}/etc/modules"
             line: "overlay"
 
-
-#      - name: configure replacement init
-#        template:
-#            src: overlayInit.sh
-#            dest: "{{tempfile_mount_root.path}}/sbin/overlayInit.sh"
-#            mode: "u=rwx,g=rx,o=rx"
-#        vars:
-#            etc_uuid: "{{lsblk_middle_etc['blockdevices'][0]['uuid']}}"
-#            etc_crypt_target: root_builder_crypt_etc
-#      - name: reconfigure GRUB to use the new init
-#        replace:
-#            regexp: "-amd64 root="
-#            replace: "-amd64 init=/sbin/overlayInit.sh root="
-#            path: "{{tempfile_mount_root.path}}/boot/grub/grub.cfg"
-
       always:
       - name: fsync
         command: sync
