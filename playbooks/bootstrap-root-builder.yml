@@ -144,6 +144,20 @@
         - fstab
         - crypttab
 
+      - set_fact:
+          systemd_units:
+          - upper-etc.service
+
+      - name: add systemd units
+        template:
+            src: "{{item}}"
+            dest: "{{tempfile_mount_root.path}}/etc/systemd/system/{{item}}"
+        with_items: "{{systemd_units}}"
+
+      - name: enable systemd units
+        command: "chroot {{tempfile_mount_root.path}} systemctl enable {{item}}"
+        with_items: "{{systemd_units}}"
+
       - name: configure sshd
         template:
             src: sshd_config

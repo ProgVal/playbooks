@@ -1,0 +1,13 @@
+[Unit]
+Description=mounts a tmpfs on /mnt/__upper_etc and creates datadir and workdir in it
+Before=etc.mount
+
+[Install]
+RequiredBy=etc.mount
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -ec "mount -t tmpfs tmpfs /mnt/__upper_etc; \
+                       mkdir /mnt/__upper_etc/datadir; \
+                       mkdir /mnt/__upper_etc/workdir;"
