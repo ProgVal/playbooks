@@ -54,6 +54,14 @@
         state: directory
       register: tempfile_mount_root
 
+    - name: partition system-rw
+      parted:
+          device: "{{system_rw_nbd}}"
+          number: 1
+          part_start: 0%
+          part_end: 100%
+          state: present
+
     - name: remount block
       block:
 
@@ -81,7 +89,7 @@
         import_role:
             name: encrypted_device
         vars:
-            device: "{{system_rw_nbd}}p2"
+            device: "{{system_rw_nbd}}p1"
             target: "root_builder_crypt_system_rw"
             keyfile_content: "{{hostvars[target_hostname].disk_keyfile}}"
       - name: mount system rw

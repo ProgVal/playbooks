@@ -19,31 +19,12 @@
           mount: /boot
         - num: 3
           size: 100M
-#          type: 8200
-#          fs: ext4
-#          mount: /mnt/__middle_etc
-#          encrypt: yes
-#          passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
-#          target: root_builder_crypt_etc
         - num: 4
           # no size
           type: 8200
           fs: ext4
           mount: /
           mkfs_options: "-O ^has_journal"
-      - device: "{{system_rw_nbd}}"
-        partitions:
-        - num: 1
-          size: 1M
-          type: ef02
-        - num: 2
-          # no size
-          type: 8200
-          fs: ext4
-#          mount: /mnt/__system_rw
-#          encrypt: yes
-#          passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
-#          target: root_builder_crypt_system_rw
       install_packages:
       - less
       - cryptsetup

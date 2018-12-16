@@ -36,7 +36,7 @@
   - {device: "{{root_nbd}}p2", var: lsblk_boot}
   - {device: "{{root_nbd}}p3", var: lsblk_middle_etc}
   - {device: "{{root_nbd}}p4", var: lsblk_root}
-  - {device: "{{system_rw_nbd}}p2", var: lsblk_system_rw}
+  - {device: "{{system_rw_nbd}}p1", var: lsblk_system_rw}
 
 - name: configure fstab and crypttab
   template:
