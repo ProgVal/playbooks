@@ -1,0 +1,21 @@
+- name: create temporary keyfile
+  tempfile:
+      path: /run/
+  register: tempfile_keyfile
+
+- name: write keyfile
+  copy:
+    content: "{{keyfile_content}}"
+    dest: "{{tempfile_keyfile.path}}"
+
+- name: test if the device is already a LUKS device
+  command: "cryptsetup isLuks {{device}}"
+  register: is_luks
+  ignore_errors: true
+
+- name: format
+  command: "cryptsetup luksFormat --cipher aes-xts-plain64 {{device}} {{tempfile_keyfile.path}}"
+  when: is_luks is failed
+
+- name: open encrypted device
+  command: "cryptsetup luksOpen {{device}} {{target}} --key-file {{tempfile_keyfile.path}} --key-slot 0"

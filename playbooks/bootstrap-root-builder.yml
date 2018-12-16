@@ -50,24 +50,6 @@
       import_tasks: utils/run_debootstrap.yml
       static: yes
 
-    - name: create temporary keyfile
-      tempfile:
-          path: /run/
-      register: tempfile_keyfile
-    - name: write keyfile
-      copy:
-        content: "{{hostvars[target_hostname].disk_keyfile}}"
-        dest: "{{tempfile_keyfile.path}}"
-    - name: add keyfile to LUKS devices
-      command: "cryptsetup luksAddKey {{item}} {{tempfile_keyfile.path}} --iter-time 1000 --key-slot 1"
-      args:
-          stdin: "{{hostvars[target_hostname].disk_passphrase}}"
-      failed_when: false
-      with_items:
-      - "{{root_nbd}}p3"
-      - "{{system_rw_nbd}}p2"
-
-
     - tempfile:
         state: directory
       register: tempfile_mount_root
@@ -80,15 +62,35 @@
       - name: remount boot image
         command: "mount {{root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
 
-      - name: decrypt middle etc image
-        command: "cryptsetup luksOpen {{root_nbd}}p3 root_builder_crypt_etc --key-file {{tempfile_keyfile.path}}"
-      - name: remount middle etc image
-        command: "mount /dev/mapper/root_builder_crypt_etc {{tempfile_mount_root.path}}/mnt/__middle_etc"
+      - name: open middle etc
+        import_role:
+            name: encrypted_device
+        vars:
+            device: "{{root_nbd}}p3"
+            target: "root_builder_crypt_etc"
+            keyfile_content: "{{hostvars[target_hostname].disk_keyfile}}"
+      - name: mount middle etc
+        import_role:
+            name: mkfs_mount
+        vars:
+            fstype: ext4
+            device: "/dev/mapper/root_builder_crypt_etc"
+            path: "{{tempfile_mount_root.path}}/mnt/__middle_etc"
 
-      - name: decrypt system rw image
-        command: "cryptsetup luksOpen {{system_rw_nbd}}p2 root_builder_crypt_system_rw --key-file {{tempfile_keyfile.path}}"
-      - name: remount system rw image
-        command: "mount /dev/mapper/root_builder_crypt_system_rw {{tempfile_mount_root.path}}/mnt/__system_rw"
+      - name: open system rw
+        import_role:
+            name: encrypted_device
+        vars:
+            device: "{{system_rw_nbd}}p2"
+            target: "root_builder_crypt_system_rw"
+            keyfile_content: "{{hostvars[target_hostname].disk_keyfile}}"
+      - name: mount system rw
+        import_role:
+            name: mkfs_mount
+        vars:
+            fstype: ext4
+            device: "/dev/mapper/root_builder_crypt_system_rw"
+            path: "{{tempfile_mount_root.path}}/mnt/__system_rw"
 
       - name: configure vm
         import_role:
@@ -103,19 +105,27 @@
 
       - name: unmount system rw image
         command: "umount {{tempfile_mount_root.path}}/mnt/__middle_etc"
+        failed_when: false
       - name: unmount system rw image
         command: "umount {{tempfile_mount_root.path}}/mnt/__system_rw"
+        failed_when: false
       - name: unmount boot image
         command: "umount {{tempfile_mount_root.path}}/boot"
+        failed_when: false
       - name: unmount overlay root
         command: "umount {{tempfile_mount_root.path}}"
+        failed_when: false
       - name: close encrypted etc
         command: "cryptsetup luksClose root_builder_crypt_etc"
+        failed_when: false
       - name: close encrypted system rw
         command: "cryptsetup luksClose root_builder_crypt_system_rw"
+        failed_when: false
 
     always:
     - name: unmap rbd device
       command: "rbd-nbd unmap {{root_nbd}}"
+      failed_when: false
     - name: unmap rbd device
       command: "rbd-nbd unmap {{system_rw_nbd}}"
+      failed_when: false

@@ -1,5 +1,5 @@
 - name: install system
-  include_role:
+  import_role:
       name: debootstrap
   vars:
       release: stretch
@@ -19,12 +19,12 @@
           mount: /boot
         - num: 3
           size: 100M
-          type: 8200
-          fs: ext4
-          mount: /mnt/__middle_etc
-          encrypt: yes
-          passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
-          target: root_builder_crypt_etc
+#          type: 8200
+#          fs: ext4
+#          mount: /mnt/__middle_etc
+#          encrypt: yes
+#          passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
+#          target: root_builder_crypt_etc
         - num: 4
           # no size
           type: 8200
@@ -40,10 +40,10 @@
           # no size
           type: 8200
           fs: ext4
-          mount: /mnt/__system_rw
-          encrypt: yes
-          passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
-          target: root_builder_crypt_system_rw
+#          mount: /mnt/__system_rw
+#          encrypt: yes
+#          passphrase: "{{ hostvars['root-builder'].disk_passphrase }}"
+#          target: root_builder_crypt_system_rw
       install_packages:
       - less
       - cryptsetup

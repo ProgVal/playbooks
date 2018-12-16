@@ -1,0 +1,13 @@
+- name: mkfs
+  filesystem:
+      force: no
+      dev: "{{device}}"
+      fstype: "{{fstype}}"
+
+- name: create mount point
+  file:
+      path: "{{path}}"
+      state: directory
+
+- name: mount
+  command: "mount -t {{fstype}} {{device}} {{path}}"
