@@ -100,12 +100,6 @@
             device: "/dev/mapper/root_builder_crypt_system_rw"
             path: "{{tempfile_mount_root.path}}/mnt/__system_rw"
 
-      # the UUIDs are possibly changed by mkfs_mount
-      - name: trigger udev to detect new block devices
-        command: udevadm trigger
-      - name: wait for udev to complete its refresh
-        command: udevadm settle
-
       - name: pseudo-fs block
         block:
         - name: mount pseudo-filesystems
