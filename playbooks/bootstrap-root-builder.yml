@@ -58,7 +58,7 @@
       parted:
           device: "{{system_rw_nbd}}"
           number: 1
-          part_start: 0%
+          part_start: 1MiB
           part_end: 100%
           state: present
 
@@ -99,6 +99,24 @@
             fstype: ext4
             device: "/dev/mapper/root_builder_crypt_system_rw"
             path: "{{tempfile_mount_root.path}}/mnt/__system_rw"
+
+      # the UUIDs are possibly changed by mkfs_mount
+      - name: trigger udev to detect new block devices
+        command: udevadm trigger
+      - name: wait for udev to complete its refresh
+        command: udevadm settle
+
+      - name: pseudo-fs block
+        block:
+        - name: mount pseudo-filesystems
+          command: "mount --bind /{{item}} {{tempfile_mount_root.path}}/{{item}}"
+          with_items: [dev, sys, proc]
+        - name: install grub on system rw
+          command: "chroot {{tempfile_mount_root.path}} grub-install {{system_rw_nbd}} --locales="
+        always:
+        - name: umount pseudo-filesystems
+          command: "umount -l {{tempfile_mount_root.path}}/{{item}}"
+          with_items: [dev, sys, proc]
 
       - name: configure vm
         import_role:

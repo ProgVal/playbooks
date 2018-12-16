@@ -1,3 +1,6 @@
-- command: "lsblk -o uuid -nJ {{item.device}}"
+- command: "lsblk -o +UUID -nJ {{item.device}}"
+  # Using "-o +UUID" instead of "-o UUID" prevents lsblk from showing the
+  # inner/encrypted filesystem UUID at the same level as the LUKS partition
+  # UUID.
   register: lsblk_output
 - set_fact: "{{item.var}}={{lsblk_output.stdout|from_json}}"
