@@ -57,8 +57,8 @@
       </source>
       <target dev="hda" bus="ide"/>
     </disk>-->
-    <interface type='network'>
-      <source network='default'/>
+    <interface type='bridge'>
+      <source bridge='vm-br'/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>

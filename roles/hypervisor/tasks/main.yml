@@ -3,18 +3,17 @@
   delegate_to: "{{groups['mons'][0]}}"
   register: ceph_key
   changed_when: false
-- name: install libvirt-daemon-system
+
+- name: install packages
   apt:
-    name: libvirt-daemon-system
+    name: "{{item}}"
     state: present
-- name: install qemu rbd support
-  apt:
-    name: qemu-block-extra
-    state: present
-- name: install python-libvirt
-  apt:
-    name: python-libvirt
-    state: present
+  with_items:
+  - libvirt-daemon-system
+  - qemu-block-extra
+  - python-libvirt
+  - bridge-utils
+  - dnsmasq
 
 - name: Define secret
   virt_secret:
@@ -27,28 +26,50 @@
   register: define_secret
 - set_fact:
     rbd_auth_secret_uuid: '{{define_secret.uuid}}'
-#- name: define secret
-#  command: virsh secret-define --file /dev/stdin
-#  args:
-#    stdin: '{{ lookup("template", "libvirt-pool-secret.xml") }}'
-#  register: define_secret
-#- set_fact:
-#    rbd_auth_secret_uuid: "{{ define_secret.stdout.split(' ')[1] }}"
-#- name: set secret
-#  command: virsh secret-set-value --secret {{rbd_auth_secret_uuid}} --base64 {{ceph_key.stdout}}
 
-
-
-#- name: define storage pool
-#  virt_pool:
-#      command: define
-#      name: root-images
-#      xml: '{{ lookup("template", "libvirt-pool.xml") }}'
-#- name: enable storage pool
-#  virt_pool:
+#- name: enable network
+#  virt_net:
 #    state: active
-#    name: root-images
+#    name: default
+
+# TODO: should add this in the sysctl:
+# net.ipv6.conf.all.forwarding=1
+# (and this? net.ipv6.conf.eno1.accept_ra=2)
+- name: configure network
+  copy:
+      dest: "/etc/network/interfaces.d/vm-br"
+      content: |
+          auto vm-br
+          iface vm-br inet static
+              pre-up brctl show
+              pre-up brctl addbr vm-br
+              pre-up brctl show
+              post-down brctl delbr vm-br
+              address 192.168.20.1
+              netmask 255.255.255.0
+              # Compute UDP checksums sent to VMs https://github.com/projectcalico/calico/issues/40#issuecomment-110058127
+              up iptables -t mangle -A OUTPUT -o vm-br -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+              up iptables -t nat -A POSTROUTING -j MASQUERADE
+          iface vm-br inet6 static
+              address fd42::1
+              netmask 64
+              up ip6tables -t nat -A POSTROUTING -j MASQUERADE
+  register: config_bridge
+
+- name: disable network
+  command: "ifdown vm-br"
+  ignore_errors: True
+  when: config_bridge.changed
+
 - name: enable network
-  virt_net:
-    state: active
-    name: default
+  command: "ifup vm-br"
+  notify: # make cjdns and dnsmasq bind on the new interface
+  - restart cjdns
+  - restart dnsmasq
+  when: config_bridge.changed
+
+- name: configure dnsmasq
+  template:
+      src: dnsmasq.conf
+      dest: "/etc/dnsmasq.conf"
+  notify: restart dnsmasq
