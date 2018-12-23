@@ -1,3 +1,8 @@
+- name: set hostname
+  copy:
+      content: "{{target_hostname}}"
+      dest: "{{chroot_path}}/etc/hostname}}"
+
 - name: configure interface
   copy:
       dest: "{{chroot_path}}/etc/network/interfaces.d/ens3"
