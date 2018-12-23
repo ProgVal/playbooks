@@ -25,10 +25,10 @@
   - action: ceph_facts
     delegate_to: ceph-mon.helium
   - name: create middle root image
-    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-root-images/{{target_hostname}}
+    command: rbd create -n client.root-builder-bootstrap --size 10240 rbd-root-images/{{target_hostname}}
     when: 'target_hostname not in rbd_images["rbd-root-images"]'
   - name: create middle root image
-    command: rbd create -n client.root-builder-bootstrap --keyring=/etc/ceph/ceph.client.root-builder-bootstrap.keyring --size 10240 rbd-system-rw/{{target_hostname}}
+    command: rbd create -n client.root-builder-bootstrap --size 10240 rbd-system-rw/{{target_hostname}}
     when: 'target_hostname not in rbd_images["rbd-system-rw"]'
 
   - name: nbd mount block
