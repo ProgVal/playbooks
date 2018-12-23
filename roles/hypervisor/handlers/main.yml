@@ -1,0 +1,9 @@
+- name: restart cjdns
+  systemd:
+      name: cjdns
+      state: restarted
+
+- name: restart dnsmasq
+  systemd:
+      name: dnsmasq
+      state: restarted
