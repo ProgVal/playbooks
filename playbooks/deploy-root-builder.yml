@@ -29,7 +29,7 @@
     vars:
         vm_hostname: root-builder
         mem_max_mib: 2048
-        mem_cur_mib: 1024
+        mem_cur_mib: 2048
         nb_vcpu: 2
   - name: start root-builder
     virt:

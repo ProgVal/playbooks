@@ -4,9 +4,9 @@
   - name: create root image pool
     command: ceph osd pool create rbd-root-images 16 replicated replicated_hosts_hdd
     when: '"rbd-root-images" not in rbd_images'
-- hosts: root-builder-bootstrap.helium
+- hosts: root-builder.helium
   vars:
-    ceph_client_name: client.root-builder-bootstrap
+    ceph_client_name: client.root-builder
     target_hostname: root-builder
   pre_tasks:
   - apt:
@@ -19,16 +19,25 @@
   - role: ceph-rbd
     ceph_rbd_rw_pools:
     - rbd-root-images
-    - rbd-common-root-images
     - rbd-system-rw
   tasks:
   - action: ceph_facts
     delegate_to: ceph-mon.helium
+  - name: get last snapshot
+    command: rbd snap ls -n client.root-builder rbd-root-images/{{target_hostname}}
+    register: snap_ls
+  - set_fact:
+      snap_ls: "{{snap_ls.stdout|from_json}}"
+  - set_fact:
+      snap_ls: "{{snap_ls|sort(attribute='name')}}"
+  - set_fact:
+      last_snap: "{{snap_ls[-1].name}}"
+  
   - name: create middle root image
-    command: rbd create -n client.root-builder-bootstrap --size 10240 rbd-root-images/{{target_hostname}}
+    command: rbd clone -n client.root-builder --size 10240 {{last_snap}} rbd-root-images/{{target_hostname}}
     when: 'target_hostname not in rbd_images["rbd-root-images"]'
   - name: create middle root image
-    command: rbd create -n client.root-builder-bootstrap --size 10240 rbd-system-rw/{{target_hostname}}
+    command: rbd create -n client.root-builder --size 10240 rbd-system-rw/{{target_hostname}}
     when: 'target_hostname not in rbd_images["rbd-system-rw"]'
 
   - name: nbd mount block
@@ -46,14 +55,6 @@
     - set_fact:
         system_rw_nbd: '{{map_nbd.stdout}}'
 
-#    - name: run debootsrap
-#      import_tasks: utils/run_debootstrap.yml
-#      static: yes
-
-    - tempfile:
-        state: directory
-      register: tempfile_mount_root
-
     - name: partition system-rw
       parted:
           device: "{{system_rw_nbd}}"
@@ -62,12 +63,12 @@
           part_end: 100%
           state: present
 
-    - name: remount block
+    - name: mount block
       block:
 
-      - name: remount root image
+      - name: mount root image
         command: "mount {{root_nbd}}p4 {{tempfile_mount_root.path}}"
-      - name: remount boot image
+      - name: mount boot image
         command: "mount {{root_nbd}}p2 {{tempfile_mount_root.path}}/boot"
 
       - name: open middle etc
@@ -112,20 +113,11 @@
           command: "umount -l {{tempfile_mount_root.path}}/{{item}}"
           with_items: [dev, sys, proc]
 
-      - name: add ceph release key
-        shell: "wget -q -O- 'https://download.ceph.com/keys/release.asc' | chroot {{tempfile_mount_root.path}} eatmydata apt-key add -"
-
-      - name: add ceph stable repository
-        copy:
-            content: "deb http://download.ceph.com/debian-luminous {{ debian_version }} main"
-            dest: "{{tempfile_mount_root.path}}/etc/apt/sources.list.d/ceph-luminous-stretch.list"
-
       - name: configure vm
         import_role:
             name: base_vm_chroot
         vars:
             chroot_path: "{{tempfile_mount_root.path}}"
-            extra_packages: debootstrap ceph-common rbd-nbd parted gdisk xfsprogs e2fsprogs uuid-runtime
 
       always:
       - name: fsync
@@ -158,3 +150,4 @@
     - name: unmap rbd device
       command: "rbd-nbd unmap {{system_rw_nbd}}"
       failed_when: false
+

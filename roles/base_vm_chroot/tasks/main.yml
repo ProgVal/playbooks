@@ -17,8 +17,11 @@
   vars:
       home_path: "{{chroot_path}}/root"
 
+- name: apt update
+  command: chroot {{chroot_path}} eatmydata -- apt-get update
+
 - name: install packages
-  command: chroot {{chroot_path}} eatmydata -- apt-get install -q -y python # htop bash-completion locales debootstrap openssh-server # python3 ruby php vim emacs debian-goodies iotop iftop nethogs tcpdump lsof
+  command: chroot {{chroot_path}} eatmydata -- apt-get install -q -y python python-apt htop bash-completion locales openssh-server {{extra_packages}} # python3 ruby php vim emacs debian-goodies iotop iftop nethogs tcpdump lsof
 
 - name: disable systemd-timesyncd
   command: chroot {{chroot_path}} systemctl disable systemd-timesyncd

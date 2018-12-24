@@ -1,0 +1,46 @@
+- hosts: root-builder
+  vars:
+    ceph_client_name: client.root-builder
+    image_name: base-debian-stretch
+  roles:
+  - friendship-express
+  - role: ceph-rbd
+    ceph_rbd_rw_pools:
+    - rbd-root-images
+  tasks:
+  - action: ceph_facts
+    delegate_to: ceph-mon.helium
+  - name: create middle root image
+    command: "rbd create -n client.root-builder --size 10240 rbd-root-images/{{image_name}}"
+    when: 'image_name not in rbd_images["rbd-root-images"]'
+
+  - name: nbd mount block
+    block:
+
+    - name: map nbd root image
+      shell: "CEPH_ARGS=\"--name {{ceph_client_name}}\" rbd-nbd map rbd-root-images/{{image_name}}"
+      register: map_nbd
+    - set_fact:
+        root_nbd: '{{map_nbd.stdout}}'
+
+    - name: wipe image
+      command: "blkdiscard {{root_nbd}}"
+
+    - name: run debootsrap
+      import_tasks: utils/run_debootstrap.yml
+      static: yes
+
+    always:
+    - name: fsync
+      command: sync
+      changed_when: false
+    - name: unmap rbd device
+      command: "rbd-nbd unmap {{root_nbd}}"
+      failed_when: false
+
+  - name: get time stamp
+    command: "date +%Y-%m-%d_%H-%M-%S"
+    register: date
+
+  - name: snapshot the image
+    shell: "CEPH_ARGS=\"--name {{ceph_client_name}}\" rbd snap create rbd-root-images/{{image_name}}@at_{{date.stdout}}"
