@@ -67,7 +67,8 @@ with tempfile.TemporaryDirectory() as tempdir:
 
 (pk_type, pk_value, _) = pk.strip().split()
 
-print('ssh_host_keys:')
-print('  ed25519:')
-print('    pk: %s %s root@%s' % (pk_type, pk_value, hostname))
-print_encrypted_var('    sk', sk)
+print('ssh:')
+print('  host_keys:')
+print('    ed25519:')
+print('      pk: %s %s root@%s' % (pk_type, pk_value, hostname))
+print_encrypted_var('      sk', sk)
