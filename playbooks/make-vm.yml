@@ -101,6 +101,7 @@
             device: "/dev/mapper/root_builder_crypt_system_rw"
             path: "{{tempfile_mount_root.path}}/mnt/__system_rw"
 
+      # TODO: configure GRUB to use elevator=noop
       - name: pseudo-fs block
         block:
         - name: mount pseudo-filesystems
