@@ -1,0 +1,10 @@
+- name: Install munin-node
+  apt:
+    name: munin-node
+    state: present
+
+- name: Copy munin-node configuration.
+  template:
+    src: munin-node.conf
+    dest: /etc/munin/munin-node.conf
+  notify: restart munin-node

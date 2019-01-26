@@ -1,0 +1,16 @@
+- hosts: munin-nodes
+  strategy: free
+  roles:
+  - munin-node
+
+- hosts: hydrogen
+  strategy: free
+  tasks:
+  - name: install munin master
+    apt:
+      name: munin
+      state: present
+  - name: Copy munin-node configuration.
+    template:
+      src: munin.conf
+      dest: /etc/munin/munin.conf
