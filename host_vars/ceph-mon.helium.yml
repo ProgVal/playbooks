@@ -1,0 +1,5 @@
+munin:
+  plugins:
+    config: |
+      [df_inode]
+      env.exclude none unknown iso9660 squashfs udf romfs ramfs vfat debugfs nilfs2 rootfs fuse.ceph-fuse
