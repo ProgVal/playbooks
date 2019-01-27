@@ -8,3 +8,6 @@
 [submodule "munin-plugins"]
 	path = munin-plugins
 	url = git@git.sr.ht:~vlorentz/munin-plugins
+[submodule "playbooks/files/munin-plugins"]
+	path = playbooks/files/munin-plugins
+	url = git@git.sr.ht:~vlorentz/munin-plugins

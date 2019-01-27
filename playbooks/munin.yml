@@ -18,6 +18,24 @@
       with_items: [blkstat, cputime, ifstat, mem]
       notify: restart munin-node
     when: inventory_hostname in groups['hypervisors']
+  - name: install and configure ceph monitor plugins
+    block:
+    - name: install ceph monitor plugins
+      copy:
+        src: "munin-plugins/{{item}}.py"
+        dest: "/etc/munin/plugins/{{item}}"
+        mode: "u=rwx,g=rx,o=rx"
+      notify: restart munin-node
+      with_items: [ceph_mon_up]
+    - name: configure plugins
+      copy:
+        dest: /etc/munin/plugin-conf.d/20_ansible_ceph
+        content: |
+          [ceph_*]
+          user root
+      notify: restart munin-node
+    when: inventory_hostname in groups['mons']
+
 
 
 - hosts: hydrogen
