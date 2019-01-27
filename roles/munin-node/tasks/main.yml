@@ -8,3 +8,10 @@
     src: munin-node.conf
     dest: /etc/munin/munin-node.conf
   notify: restart munin-node
+
+- name: Configure plugins
+  copy:
+    content: "{{hostvars[inventory_hostname].munin.plugins.config}}"
+    dest: /etc/munin/plugin-conf.d/10_ansible
+  when: hostvars[inventory_hostname].get('munin', {}).get('plugins', {}).get('config', '')
+  notify: restart munin-node
