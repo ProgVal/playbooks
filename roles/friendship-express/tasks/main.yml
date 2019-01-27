@@ -1,8 +1,10 @@
 - name: "Build hosts file"
-  lineinfile:
+  blockinfile:
       dest: /etc/hosts
-      regexp: '.* {{ item }}$'
-      line: "{{ hostvars[item].fe_addr }} {{item}}"
+      block: |
+        {% for hostname in groups['friendship_express'] %}
+        {% if hostvars[hostname].fe_addr is defined %}
+        {{ hostvars[hostname].fe_addr }} {{hostname}}
+        {% endif %}
+        {% endfor %}
       state: present
-  when: hostvars[item].fe_addr is defined
-  with_items: "{{ groups['friendship_express'] }}"
