@@ -2,6 +2,23 @@
   strategy: free
   roles:
   - munin-node
+  tasks:
+  - name: install and enable munin-libvirt-plugins
+    block:
+    - name: install munin-libvirt-plugins
+      apt:
+        name: munin-libvirt-plugins
+        state: present
+      notify: restart munin-node
+    - name: enable munin-libvirt-plugins
+      file:
+        path: "/etc/munin/plugins/libvirt-{{item}}"
+        src: "/usr/share/munin/plugins/libvirt-{{item}}"
+        state: link
+      with_items: [blkstat, cputime, ifstat, mem]
+      notify: restart munin-node
+    when: inventory_hostname in groups['hypervisors']
+
 
 - hosts: hydrogen
   strategy: free

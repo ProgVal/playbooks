@@ -55,3 +55,7 @@ tw-de1
 
 [munin-nodes:children]
 helium-vms
+
+[hypervisors]
+carbon
+helium
