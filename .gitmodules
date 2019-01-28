@@ -5,9 +5,6 @@
 [submodule "roles/debootstrap"]
 	path = roles/debootstrap
 	url = https://github.com/ProgVal/ansible-debootstrap.git
-[submodule "munin-plugins"]
-	path = munin-plugins
-	url = git@git.sr.ht:~vlorentz/munin-plugins
 [submodule "playbooks/files/munin-plugins"]
 	path = playbooks/files/munin-plugins
-	url = git@git.sr.ht:~vlorentz/munin-plugins
+	url = https://git.sr.ht/~vlorentz/munin-plugins
