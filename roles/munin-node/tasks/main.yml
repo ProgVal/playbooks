@@ -9,6 +9,14 @@
     dest: /etc/munin/munin-node.conf
   notify: restart munin-node
 
+- name: Enable extra plugins
+  file:
+    src: "{% if item.path is defined %}item.path{% else %}/usr/share/munin/plugins/{{item.name}}{% endif %}"
+    path: "/etc/munin/plugins/{{item.name}}"
+    state: link
+  notify: restart munin-node
+  with_items: "{{extra_plugins}}"
+
 - name: Configure plugins
   copy:
     content: "{{hostvars[inventory_hostname].munin.plugins.config}}"

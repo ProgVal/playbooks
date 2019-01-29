@@ -8,3 +8,6 @@
 [submodule "playbooks/files/munin-plugins"]
 	path = playbooks/files/munin-plugins
 	url = https://git.sr.ht/~vlorentz/munin-plugins
+[submodule "playbooks/files/munin-contrib"]
+	path = playbooks/files/munin-contrib
+	url = https://github.com/ProgVal/contrib.git

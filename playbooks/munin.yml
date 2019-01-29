@@ -35,7 +35,11 @@
           user root
       notify: restart munin-node
     when: inventory_hostname in groups['mons']
-
+  - name: Configure apt update cron
+    # for the 'apt' plugin
+    cron:
+      special_time: hourly
+      job: "apt-get update -q > /dev/null"
 
 
 - hosts: hydrogen
