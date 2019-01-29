@@ -9,6 +9,12 @@ ceph-mon.helium
 ganymede
 carbon
 
+[osds]
+carbon
+fluorine
+nitrogen
+neon
+
 [friendship_express]
 ganymede fe_addr=fdfe:c609:8b39:7629:77ef:dd4d:83a:4a56
 carbon
