@@ -35,10 +35,25 @@
           user root
       notify: restart munin-node
     when: inventory_hostname in groups['mons']
+  - name: Deconfigure apt update cron
+    # for the 'apt' plugin
+    cron:
+      name: None
+      special_time: hourly
+      job: "apt-get update -q > /dev/null"
+      state: absent
+  - name: Deconfigure apt update cron
+    # for the 'apt' plugin
+    cron:
+      name: apt-update-hourly
+      minute: "{{ inventory_hostname | hash('sha512') | regex_search('([0-5])')}}0"
+      job: "apt-get update -q > /dev/null"
   - name: Configure apt update cron
     # for the 'apt' plugin
     cron:
-      special_time: hourly
+      name: apt-update-hourly2
+      # run it at a "random" (but deterministic) minute
+      minute: "{{ inventory_hostname | hash('sha512') | regex_search('([0-5][0-9])')}}"
       job: "apt-get update -q > /dev/null"
 
 
