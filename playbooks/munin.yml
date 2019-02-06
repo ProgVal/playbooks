@@ -26,7 +26,7 @@
         dest: "/etc/munin/plugins/{{item}}"
         mode: "u=rwx,g=rx,o=rx"
       notify: restart munin-node
-      with_items: [ceph_mon_up, ceph_pool_df, ceph_osd_df, ceph_space, ceph_misplaced]
+      with_items: [ceph_mon_up, ceph_pool_df, ceph_osd_df, ceph_space, ceph_misplaced, ceph_degraded]
     - name: configure ceph monitor plugins
       copy:
         dest: /etc/munin/plugin-conf.d/20_ansible_ceph
@@ -48,6 +48,7 @@
       name: apt-update-hourly
       minute: "{{ inventory_hostname | hash('sha512') | regex_search('([0-5])')}}0"
       job: "apt-get update -q > /dev/null"
+      state: absent
   - name: Configure apt update cron
     # for the 'apt' plugin
     cron:
