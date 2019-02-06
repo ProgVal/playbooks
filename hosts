@@ -7,13 +7,16 @@ debian_version=stretch
 [mons]
 ceph-mon.helium
 ganymede
-carbon
+neon
 
 [osds]
-carbon
 fluorine
 nitrogen
 neon
+
+[ceph:children]
+mons
+osds
 
 [friendship_express]
 ganymede fe_addr=fdfe:c609:8b39:7629:77ef:dd4d:83a:4a56
