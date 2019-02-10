@@ -1,2 +1,7 @@
 ansible_port: 12322
 fe_addr: fdfe:b16e:d987:8f14:92f:739c:a929:fb7d
+munin:
+  plugins:
+    config: |
+      [df_inode]
+      env.exclude none unknown iso9660 squashfs udf romfs ramfs vfat debugfs nilfs2 rootfs fuse.ceph-fuse
