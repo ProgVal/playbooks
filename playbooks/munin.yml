@@ -3,6 +3,7 @@
   roles:
   - munin-node
   tasks:
+
   - name: install and enable munin-libvirt-plugins
     block:
     - name: install munin-libvirt-plugins
@@ -18,6 +19,17 @@
       with_items: [blkstat, cputime, ifstat, mem]
       notify: restart munin-node
     when: inventory_hostname in groups['hypervisors']
+
+  - name: install munin-contrib plugins
+    block:
+    - name: install munin-contrib plugins
+      copy:
+        src: "munin-contrib/plugins/{{item}}"
+        dest: "/etc/munin/plugins/{{item.split('/')[-1]}}"
+        mode: "u=rwx,g=rx,o=rx"
+      notify: restart munin-node
+      with_items: [systemd/systemd_units]
+
   - name: install and configure ceph monitor plugins
     block:
     - name: install ceph monitor plugins
@@ -35,6 +47,7 @@
           user root
       notify: restart munin-node
     when: inventory_hostname in groups['mons']
+
   - name: Deconfigure apt update cron
     # for the 'apt' plugin
     cron:
