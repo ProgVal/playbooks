@@ -9,6 +9,19 @@
     dest: /etc/munin/munin-node.conf
   notify: restart munin-node
 
+- name: Create munin-node.service override config dir
+  file:
+    path: /etc/systemd/system/munin-node.service.d/
+    state: directory
+- name: Config munin-node.service unit
+  # Required as munin-node listens on the VPN interface
+  copy:
+    content: |
+      [Unit]
+      After=network.target
+    dest: /etc/systemd/system/munin-node.service.d/depend_network.conf
+  notify: systemd daemon-reload
+
 - name: Enable extra plugins
   file:
     src: "{% if item.path is defined %}item.path{% else %}/usr/share/munin/plugins/{{item.name}}{% endif %}"
