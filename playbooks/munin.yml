@@ -69,6 +69,8 @@
       # run it at a "random" (but deterministic) minute
       minute: "{{ inventory_hostname | hash('sha512') | regex_search('([0-5][0-9])')}}"
       job: "apt-get update -q > /dev/null"
+      # Disabled on ganymede, makes the SSD throw errors faster
+      state: "{% if inventory_hostname == 'ganymede' %}absent{% else %}present{% endif %}"
 
 
 - hosts: hydrogen

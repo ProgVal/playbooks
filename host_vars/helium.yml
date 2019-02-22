@@ -1,2 +1,3 @@
 ansible_port: 12322
 fe_addr: fdfe:a536:95bf:d354:e735:4a69:4750:df8
+munin_alerts: false
