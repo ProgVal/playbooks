@@ -1,0 +1,25 @@
+- name: write borg backup script
+  template:
+    dest: /usr/local/bin/borg.sh
+    src: borg.sh
+    mode: u=rwx,go=
+
+- name: setup borgbase client key
+  copy:
+    src: id_ed25519_borgbase
+    dest: /root/.ssh/id_ed25519_borgbase
+    mode: u=r,go=
+
+- name: setup borgbase host key
+  lineinfile:
+    path: "/root/.ssh/known_hosts"
+    regexp: "\\*.repo.borgbase.com"
+    line: "*.repo.borgbase.com,* ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHYDOAh9uJnuVsYEZHDORpMbLHPWUoNSFTA84/Q4U/d99rDp2LE4Kr+kHHpuR6IXOSpoiTAg500CX+Q6IWJybHE="
+
+- name: setup borg cron
+  cron:
+    name: borg create
+    # run it at a "random" (but deterministic) time; between 10 and 19
+    hour: "1{{ inventory_hostname | password_hash('sha512', 'borg') | regex_search('([0-9])')}}"
+    minute: "{{ inventory_hostname | password_hash('sha512', 'borg') | regex_search('([0-5][0-9])')}}"
+    job: /usr/local/bin/borg.sh
