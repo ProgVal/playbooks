@@ -1,6 +1,6 @@
 {% for target in borg_repositories %}
 
-export BORG_RSH="ssh -i /root/.ssh/id_ed25519_borgbase"
+export BORG_RSH="ssh -i /root/.ssh/id_ed25519"
 export BORG_PASSPHRASE="{{ target.passphrase }}"
 REPOSITORY="{{ target.repository }}"
 

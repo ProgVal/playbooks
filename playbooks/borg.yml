@@ -1,6 +1,4 @@
-- hosts:
-    #  - php.helium
-  - mastodon.helium
+- hosts: borg-backuped
   strategy: free
   roles:
   - borg

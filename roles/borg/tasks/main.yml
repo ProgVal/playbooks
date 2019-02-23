@@ -5,10 +5,9 @@
     mode: u=rwx,go=
 
 - name: setup borgbase client key
-  copy:
-    src: id_ed25519_borgbase
-    dest: /root/.ssh/id_ed25519_borgbase
-    mode: u=r,go=
+  file:
+    path: id_ed25519_borgbase
+    state: absent
 
 - name: setup borgbase host key
   lineinfile:

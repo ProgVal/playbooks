@@ -50,6 +50,10 @@ static.helium fe_addr=fdfe:5a02:b5ef:d7d3:57a0:b2e6:50c4:10f9
 root-builder-bootstrap.helium fe_addr=fdfe:4586:a894:bf40:12ed:d99c:d27e:3622
 bastion.helium fe_addr=fdfe:bc8c:bfc7:e54c:553b:b357:4eac:7a27
 
+[borg-backuped]
+php.helium
+mastodon.helium
+
 [munin-nodes]
 hydrogen
 ganymede
