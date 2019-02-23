@@ -7,7 +7,7 @@ REPOSITORY="{{ target.repository }}"
 borg init $REPOSITORY -e repokey|| true
 
 {% if target.backup_mysql %}
-mysqldump --all-databases | borg create --compression lzma,9 -v --stats $REPOSITORY::`hostname`-`date +%Y-%m-%d_%H-%M`-pgdumpall -
+mysqldump --all-databases | borg create --compression lzma,9 -v --stats $REPOSITORY::`hostname`-`date +%Y-%m-%d_%H-%M`-mysqldump -
 {% endif %}
 
 {% if target.backup_postgresql %}
