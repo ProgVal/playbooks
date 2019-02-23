@@ -34,25 +34,37 @@ tw-de1
 helium-vms
 
 [helium-vms]
-ceph-mon.helium fe_addr=fdfe:d846:822e:a152:9aac:d1c:18d:dfba
-php.helium fe_addr=fdfe:38ff:2320:c6b0:f984:4f08:529f:8418
-python.helium fe_addr=fdfe:53ee:a94e:3b08:3755:7b20:2d1:1812
-http-front.helium fe_addr=fdfe:6350:73aa:4b9:cb7f:a90a:2a5:bc83
-mails.helium fe_addr=fdfe:602b:3c6:f260:363:1210:c272:21a1
-game-servers.helium fe_addr=fdfe:fd3:9ac0:46ee:d4e3:1f6d:195:9cbd
-ircbots.helium fe_addr=fdfe:8409:23f2:5d:f8a2:c8f5:6753:1167
-router.helium fe_addr=fdfe:5e5d:fab5:eea4:ff89:e786:1d1f:af4a
-mastodon.helium fe_addr=fdfe:d0c1:a06c:882c:5408:b233:729a:9cd8
+bastion.helium
+ceph-mon.helium
+game-servers.helium
+http-front.helium
+ircbots.helium
+mails.helium
+mastodon.helium
 mastodon-test.helium fe_addr=fdfe:91e5:4cb7:7a89:fd05:87bf:e984:4d81
-untrusted-routers.helium fe_addr=fdfe:1dd3:9d76:3cf1:b47:aafd:f91d:1b9d
 misc.helium fe_addr=fdfe:85db:460a:ca3:cb35:6736:7ee3:76d9
-static.helium fe_addr=fdfe:5a02:b5ef:d7d3:57a0:b2e6:50c4:10f9
+php.helium
+python.helium
+static.helium
+router.helium
 root-builder-bootstrap.helium fe_addr=fdfe:4586:a894:bf40:12ed:d99c:d27e:3622
-bastion.helium fe_addr=fdfe:bc8c:bfc7:e54c:553b:b357:4eac:7a27
+untrusted-routers.helium fe_addr=fdfe:1dd3:9d76:3cf1:b47:aafd:f91d:1b9d
 
 [borg-backuped]
-php.helium
+bastion.helium
+ceph-mon.helium
+game-servers.helium
+http-front.helium
+ircbots.helium
 mastodon.helium
+mails.helium
+php.helium
+python.helium
+static.helium
+router.helium
+hydrogen
+ganymede
+neon
 
 [munin-nodes]
 hydrogen

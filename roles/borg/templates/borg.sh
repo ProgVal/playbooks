@@ -27,6 +27,8 @@ borg create --compression lzma,9 -v --stats \
     --exclude=/run \
     --exclude=/sys \
     --exclude=/tmp \
-    --exclude=/boot
+    --exclude=/boot \
+    --exclude=/mnt/ceph \
+    --exclude=/mnt/ceph-fuse
 
 {% endfor %}

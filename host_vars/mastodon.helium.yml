@@ -1,3 +1,4 @@
+fe_addr: fdfe:d0c1:a06c:882c:5408:b233:729a:9cd8
 borg_repositories:
     - repository: zldz45kp@zldz45kp.repo.borgbase.com:repo
       backup_mysql: false

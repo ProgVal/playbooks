@@ -9,6 +9,12 @@
     path: id_ed25519_borgbase
     state: absent
 
+- name: create .ssh/known_hosts
+  file:
+    path: "/root/.ssh/known_hosts"
+    state: touch
+    modification_time: preserve
+
 - name: setup borgbase host key
   lineinfile:
     path: "/root/.ssh/known_hosts"
