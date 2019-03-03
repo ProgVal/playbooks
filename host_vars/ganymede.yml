@@ -5,6 +5,7 @@ borg_repositories:
       backup_postgresql: false
       excluded_paths:
           - /media/maxtor-4TB
+          - /home/cratesio-mirror/crates.io-mirror/
       passphrase: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           65323734623634306664313263633961356635373134336162323132613362326663623935613231

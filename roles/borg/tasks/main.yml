@@ -1,3 +1,7 @@
+- name: install borg
+  apt:
+    name: borgbackup
+
 - name: write borg backup script
   template:
     dest: /usr/local/bin/borg.sh

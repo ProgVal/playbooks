@@ -28,6 +28,8 @@ borg create --compression lzma,9 -v --stats \
     --exclude=/sys \
     --exclude=/tmp \
     --exclude=/boot \
+    --exclude=/swap \
+    --exclude=/var/lib/libvirt/images/ \
     --exclude=/mnt/ceph \
     --exclude=/mnt/ceph-fuse
 
