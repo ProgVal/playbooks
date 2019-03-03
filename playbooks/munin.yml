@@ -38,7 +38,14 @@
         dest: "/etc/munin/plugins/{{item}}"
         mode: "u=rwx,g=rx,o=rx"
       notify: restart munin-node
-      with_items: [ceph_mon_up, ceph_pool_df, ceph_osd_df, ceph_space, ceph_misplaced, ceph_degraded]
+      with_items:
+        - ceph_mon_up
+        - ceph_pool_df
+        - ceph_pool_activity
+        - ceph_osd_df
+        - ceph_space
+        - ceph_misplaced
+        - ceph_degraded
     - name: configure ceph monitor plugins
       copy:
         dest: /etc/munin/plugin-conf.d/20_ansible_ceph
